@@ -1,7 +1,7 @@
-
 import unittest
-import tunemake
+import yatuner
 import os
+
 
 class TestGccCompile(unittest.TestCase):
     def setUp(self):
@@ -11,10 +11,11 @@ class TestGccCompile(unittest.TestCase):
         pass
 
     def test_dummy(self):
-        tunemake.gcc_compile(infile='dummy.c', outfile='dummy')
+        yatuner.gcc_compile(infile='samples/dummy.c', outfile='samples/dummy')
 
     def test_hello_world(self):
-        tunemake.gcc_compile(infile='hello_world.c', outfile='hello_world')
+        yatuner.gcc_compile(infile='samples/hello_world.c',
+                            outfile='samples/hello_world')
 
 
 if __name__ == '__main__':

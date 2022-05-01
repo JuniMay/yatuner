@@ -1,6 +1,7 @@
 import os
 from typing import List
 
+
 def gcc_compile(infile: str,
                 outfile: str,
                 stage: str = None,
@@ -37,7 +38,7 @@ def gcc_compile(infile: str,
             command += f' -{stage}'
         else:
             pass
-    
+
     if std:
         command += f' -std={std}'
 
@@ -65,11 +66,3 @@ def gcc_compile(infile: str,
     command += f' -o {outfile} {infile}'
 
     os.system(command)
-
-
-    
-
-
-
-
-    
