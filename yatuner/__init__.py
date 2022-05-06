@@ -1,1 +1,1 @@
-from yatuner.gcc_compile import gcc_compile
+from yatuner.compiler import Gcc

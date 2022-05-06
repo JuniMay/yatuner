@@ -4,18 +4,14 @@ import os
 
 
 class TestGccCompile(unittest.TestCase):
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
     def test_dummy(self):
-        yatuner.gcc_compile(infile='samples/dummy.c', outfile='samples/dummy')
+        gcc = yatuner.Gcc(infile_list=['samples/dummy.c'], outfile='samples/dummy')
+        gcc.execute()
 
     def test_hello_world(self):
-        yatuner.gcc_compile(infile='samples/hello_world.c',
-                            outfile='samples/hello_world')
+        gcc = yatuner.Gcc(infile_list=['samples/hello_world.c'],
+                          outfile='samples/hello_world')
+        gcc.execute()
 
 
 if __name__ == '__main__':
