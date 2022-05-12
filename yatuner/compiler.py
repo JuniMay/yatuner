@@ -9,7 +9,7 @@ from yatuner import errors
 
 class Compiler(object):
     @abstractmethod
-    def execute(self) -> None:
+    def execute(self):
         raise NotImplementedError()
 
 
@@ -67,8 +67,7 @@ class Gcc(Compiler):
 
         # print(p.communicate()[0])
 
-    @abstractmethod
-    def execute(self) -> None:
+    def execute(self):
         self.cmd += self.options['stage'] + self.options['w'] + self.options[
             'f'] + self.options['lib'] + self.options['inc'] + self.options[
                 'infile'] + self.options['outfile']

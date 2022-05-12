@@ -4,7 +4,8 @@ import platform
 
 from yatuner.errors import CompileError
 
-def execute(cmd) -> None:
+
+def execute(cmd):
     """Execute given command
     
     Args:
@@ -17,8 +18,8 @@ def execute(cmd) -> None:
         print(p.communicate())
         raise CompileError()
 
-def fetch_platform() -> str:
 
+def fetch_platform() -> str:
     """Fetch current platform
 
     Returns:
@@ -35,6 +36,7 @@ def fetch_platform() -> str:
     else:
         return 'UNKNOWN'
 
+
 def fetch_file_size(path) -> int:
     """Fetch size of given file
 
@@ -47,5 +49,3 @@ def fetch_file_size(path) -> int:
     """
 
     return os.path.getsize(path)
-
-
