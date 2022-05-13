@@ -11,3 +11,14 @@ class TestOptimize(unittest.TestCase):
 
         optimizer = yatuner.optimizer.BayesianOptimizer(gcc)
         optimizer.optimize(15)
+
+
+    def test_benchmark(self):
+        gcc = yatuner.compiler.Gcc(infiles=['tests/benchmarks/polybench/utilities/polybench.c',
+                                            'tests/benchmarks/polybench/linear-algebra/kernels/3mm/3mm.c'],
+                                   outfile='tests/samples/euler',
+                                   inc_dirs=['tests/benchmarks/polybench/utilities',
+                                             'tests/benchmarks/polybench/linear-algebra/kernels/3mm'])
+
+        optimizer = yatuner.optimizer.BayesianOptimizer(gcc)
+        optimizer.optimize(15)

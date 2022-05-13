@@ -275,16 +275,16 @@ class Gcc(Compiler):
             self.cmd += f' -{stage}'
 
         for lib in libs:
-            self.cmd += f' -l{lib}'
+            self.cmd += f' -l {lib}'
 
         for inc in incs:
-            self.cmd += f' -i{inc}'
+            self.cmd += f' -i {inc}'
 
         for lib_dir in lib_dirs:
-            self.cmd += f' -L{lib_dir}'
+            self.cmd += f' -L {lib_dir}'
 
         for inc_dir in inc_dirs:
-            self.cmd += f' -I{inc_dir}'
+            self.cmd += f' -I {inc_dir}'
 
         if adds is not None:
             self.cmf += f' {adds}'
@@ -305,7 +305,7 @@ class Gcc(Compiler):
         if self.outfile is not None:
             cmd += f' -o {self.outfile}'
 
-        # print(cmd)
+        print(cmd)
         yatuner.utils.execute(cmd)
 
     def fetch_size(self) -> int:
