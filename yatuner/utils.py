@@ -16,7 +16,10 @@ def execute(cmd):
     p.wait()
     if p.returncode != 0:
         print(p.communicate())
+        p.terminate()
         raise CompileError()
+    
+    p.terminate()
 
 
 def fetch_platform() -> str:
