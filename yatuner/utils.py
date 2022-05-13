@@ -5,20 +5,24 @@ import platform
 from yatuner.errors import CompileError
 
 
-def execute(cmd):
+def execute(cmd) -> None:
     """Execute given command
     
     Args:
         cmd: command to be executed.
     
     """
-    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    # p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    p = subprocess.Popen(cmd,
+                         stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL)
+
     p.wait()
     if p.returncode != 0:
         print(p.communicate())
         p.terminate()
         raise CompileError()
-    
+
     p.terminate()
 
 
