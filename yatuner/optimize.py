@@ -1,6 +1,13 @@
+import GPy
+import GPyOpt
+from numpy.random import seed
+import matplotlib
 import os
 from bitarray import bitarray
+from yatuner.compiler import Gcc
 from typing import List, NoReturn
+from utils import fetch_file_size
+
 
 options = [
     'aggressive-loop-optimizations',
@@ -228,3 +235,38 @@ def gen_optimization_option_list(option_flag: bitarray) -> List[str]:
             res.append(options[i])
 
     return res
+
+
+def gen_optimization_option_list_from_list(option_list: List[int]) -> List[str]:
+    res: List[str] = []
+    for i in range(len(options)):
+        if option_list[0][i] == 1:
+            res.append(options[i])
+
+    return res
+
+
+def compile_fetch_size(option_list: List[int], filename: str = "eular.c") -> int:
+    in_file = os.path.dirname(os.getcwd()).replace('/', '\\') + r"\tests\samples\\" + filename
+    out_file = os.path.dirname(os.getcwd()).replace('/', '\\') + r"\tests\samples\\" + "compiled.exe"
+    compiler = Gcc(infile_list=[in_file], outfile=out_file,
+                   f_option_list=gen_optimization_option_list_from_list(option_list))
+    compiler.execute()
+    size: int = fetch_file_size(out_file)
+    print(size)
+    return size
+
+
+def bayesian_optimization(max_iter: int):
+    bounds = [{'name': 'var', 'type': 'discrete', 'domain': (0, 1), 'dimensionality': len(options)}]
+    opt = GPyOpt.methods.BayesianOptimization(compile_fetch_size,
+                                              domain=bounds,
+                                              model_type='sparseGP',
+                                              acquisition_type='EI')
+    opt.run_optimization(max_iter)
+    opt.plot_convergence()
+
+
+bayesian_optimization(30)
+
+
