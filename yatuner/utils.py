@@ -6,7 +6,7 @@ from yatuner.errors import CompileError
 
 
 def execute(cmd) -> None:
-    """Execute given command
+    """Execute given command.
     
     Args:
         cmd: command to be executed.
@@ -24,12 +24,13 @@ def execute(cmd) -> None:
     #     print(p.communicate())
     #     p.terminate()
     #     raise CompileError()
+    # TODO: error handling under linux platform
 
     p.terminate()
 
 
 def fetch_platform() -> str:
-    """Fetch current platform
+    """Fetch current platform.
 
     Returns:
         A string indication platform.
@@ -47,7 +48,7 @@ def fetch_platform() -> str:
 
 
 def fetch_file_size(path) -> int:
-    """Fetch size of given file
+    """Fetch size of given file.
 
     Args:
         path: path to the file

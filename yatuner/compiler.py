@@ -26,7 +26,7 @@ class Gcc(Compiler):
 
     """
 
-    option_collection = [
+    option_collections = [
         'aggressive-loop-optimizations',
         'align-functions',
         'align-jumps',
@@ -288,12 +288,21 @@ class Gcc(Compiler):
             self.cmf += f' {adds}'
 
     def execute(self, flag: List[int] = []) -> None:
+        """Compile infiles by given flag
+
+        Args:
+            flag: option will be enabled if 
+                corresponding position of `flag` is 1.
+        
+        """
+
+        # TODO: options with parameters
 
         cmd = self.cmd
 
         for i in range(len(flag)):
             if flag[i] == 1:
-                cmd += f' -f{self.option_collection[i]}'
+                cmd += f' -f{self.option_collections[i]}'
             elif flag[i] > 1:
                 pass  # parameter
 
@@ -307,6 +316,13 @@ class Gcc(Compiler):
         yatuner.utils.execute(cmd)
 
     def fetch_size(self) -> int:
+        """Fetch file size of output file.
+
+        Returns:
+            The size of output file by bytes.
+        
+        """
+
         if yatuner.utils.fetch_platform() == 'WINDOWS':
             return yatuner.utils.fetch_file_size(
                 self.outfile.replace('/', '\\') + '.exe')

@@ -14,6 +14,14 @@ class Optimizer(object):
 
 
 class BayesianOptimizer(Optimizer):
+    """Bayesian optimizer
+
+    Attributes:
+        compiler: a `yatuner.compiler.Compiler` instance.
+        goal: optimization goal.
+    
+    """
+
     def __init__(self, compiler, goal: str = 'size'):
         self.goal = goal
         self.compiler = compiler
@@ -34,18 +42,24 @@ class BayesianOptimizer(Optimizer):
         return size
 
     def optimize(self, epochs=50) -> None:
+        """Execute optimization process.
+
+        Args:
+            epochs: epochs for optimization.
+        
+        """
 
         bounds = [{
             'name': 'var',
             'type': 'discrete',
             'domain': (0, 1),
-            'dimensionality': len(self.compiler.option_collection)
+            'dimensionality': len(self.compiler.option_collections)
         }]
         opt = GPyOpt.methods.BayesianOptimization(self.step,
                                                   domain=bounds,
                                                   model_type='sparseGP',
                                                   acquisition_type='EI')
-        opt.run_optimization(epochs)
+        opt.run_optimization(max_iter=epochs)
         opt.plot_convergence()
 
     def dump():
