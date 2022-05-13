@@ -14,14 +14,16 @@ def execute(cmd) -> None:
     """
     # p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     p = subprocess.Popen(cmd,
+                        shell=True,
                          stdout=subprocess.DEVNULL,
                          stderr=subprocess.DEVNULL)
 
     p.wait()
-    if p.returncode != 0:
-        print(p.communicate())
-        p.terminate()
-        raise CompileError()
+    # if p.returncode != 0:
+    #     print(cmd)
+    #     print(p.communicate())
+    #     p.terminate()
+    #     raise CompileError()
 
     p.terminate()
 

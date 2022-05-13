@@ -1,5 +1,3 @@
-import os
-import subprocess
 from typing import List
 from abc import abstractmethod
 
@@ -270,7 +268,7 @@ class Gcc(Compiler):
         self.adds = adds
 
         if stage not in ['', 'c', 'E', 'S']:
-            raise errors.InvalidOption()
+            raise yatuner.errors.InvalidOption()
         elif stage != '':
             self.cmd += f' -{stage}'
 
@@ -305,7 +303,7 @@ class Gcc(Compiler):
         if self.outfile is not None:
             cmd += f' -o {self.outfile}'
 
-        print(cmd)
+        # print(cmd)
         yatuner.utils.execute(cmd)
 
     def fetch_size(self) -> int:

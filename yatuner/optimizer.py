@@ -1,6 +1,4 @@
 import GPyOpt
-import os
-from bitarray import bitarray
 from typing import List
 from abc import abstractmethod
 

@@ -1,4 +1,3 @@
-bitarray~=2.5.1
 GPyOpt~=1.2.6
 GPy~=1.10.0
 numpy~=1.22.3
