@@ -16,7 +16,7 @@
  - [x] 贝叶斯优化
  - [ ] 遗传算法
  - [ ] 测试其他算法
- - [x] OpenEular环境适配
+ - [x] openEular环境适配
  - [ ] Topdown分析
  - [ ] Profiling-based 优化
  - [ ] 针对带参数的编译选项的优化
@@ -27,13 +27,12 @@
 
 ## 当前困难
 
- - 目前暂时还无法使用测试用环境的远程服务器，仍然在在本地 Windows 及 Ubuntu 等系统上进行开发测试
+ - 目前暂时还无法使用远程服务器的环境，仍然在本地系统进行开发测试
  - 对代码进行编译运行的时间可能较长，对优化的速度有影响，目前想通过批处理的方式进行优化
 
 ## 使用示例
 
 ```python
-
 from yatuner import compilers
 from yatuner import optimizers
 
