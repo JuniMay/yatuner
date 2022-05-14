@@ -5,11 +5,21 @@ import os
 
 class TestOptimize(unittest.TestCase):
     def test_bayesian(self):
-        gcc = yatuner.compilers.Gcc(infiles=['tests/samples/euler.c'],
-                                   outfile='tests/build/euler')
-
+        # gcc = yatuner.compilers.Gcc(infiles=['tests/samples/euler.c'],
+        #                             outfile='tests/build/euler')
+        # gcc_os = yatuner.compilers.Gcc(infiles=['tests/samples/euler.c'],
+        #                                outfile='tests/build/euler',
+        #                                adds='-Os')
+        # convenient for Synodic to test on win
+        gcc = yatuner.compilers.Gcc(infiles=['samples/euler.c'],
+                                    outfile='build/euler')
+        gcc_os = yatuner.compilers.Gcc(infiles=['samples/euler.c'],
+                                       outfile='build/euler',
+                                       adds='-Os')
         optimizer = yatuner.optimizers.BayesianOptimizer(gcc)
         optimizer.optimize(15)
+        gcc_os.execute()
+        print("-Os size: " + str(gcc_os.fetch_size()))
 
     def test_benchmark(self):
         yatuner.compilers.Gcc(

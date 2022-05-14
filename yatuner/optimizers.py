@@ -61,6 +61,7 @@ class BayesianOptimizer(Optimizer):
                                                   acquisition_type='EI')
         opt.run_optimization(max_iter=epochs)
         opt.plot_convergence()
+        print("Best: " + str(opt.fx_opt.flatten()[0]))
 
     def dump():
         pass
