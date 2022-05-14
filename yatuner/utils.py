@@ -15,21 +15,17 @@ def execute(cmd) -> None:
         CompileError: if command return code is not 0.
     
     """
-    p = subprocess.Popen(cmd,
-                         shell=True,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE)
+    with subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+        p.wait()
 
-    p.wait()
+        if p.returncode != 0:
+            print(f"Error occured while executing {cmd}")
+            print(f"Return code: {p.returncode}")
+            print(f"Message: {p.communicate()}")
+            p.terminate()
+            raise yatuner.errors.ExecuteError()
 
-    if p.returncode != 0:
-        print(f"Error occured while executing {cmd}")
-        print(f"Return code: {p.returncode}")
-        print(f"Message: {p.communicate()}")
         p.terminate()
-        raise yatuner.errors.ExecuteError()
-
-    p.terminate()
 
 
 def fetch_platform() -> str:
