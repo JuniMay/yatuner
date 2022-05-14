@@ -513,7 +513,7 @@ class Gcc(Compiler):
         if adds is not None:
             self.cmd += f' {adds}'
 
-    def execute(self, flag: List[int] = []) -> None:
+    def execute(self, flag: List[int] = []) -> str:
         """Compile infiles by given flag
 
         Args:
@@ -549,6 +549,7 @@ class Gcc(Compiler):
         else:
             self.error = False
 
+        return cmd
 
 
     def fetch_size(self) -> int:

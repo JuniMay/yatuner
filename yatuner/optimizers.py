@@ -37,9 +37,11 @@ class BayesianOptimizer(Optimizer):
         if (self.goal == 'size'):
             self.compiler.execute(options[0])
 
-        size = self.compiler.fetch_size()
-        print(size)
-        return size
+            size = self.compiler.fetch_size()
+            print(size)
+            return size
+        else:
+            raise NotImplementedError
 
     def optimize(self, epochs=50) -> None:
         """Execute optimization process.
@@ -61,7 +63,8 @@ class BayesianOptimizer(Optimizer):
                                                   acquisition_type='EI')
         opt.run_optimization(max_iter=epochs)
         opt.plot_convergence()
-        print("Best: " + str(opt.fx_opt.flatten()[0]))
+        print("   Best: " + str(opt.fx_opt.flatten()[0]))
+        print("Command: " + self.compiler.execute(opt.x_opt))
 
     def dump():
         pass

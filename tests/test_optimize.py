@@ -41,3 +41,6 @@ class TestOptimize(unittest.TestCase):
 
         optimizer = yatuner.optimizers.BayesianOptimizer(gcc)
         optimizer.optimize(15)
+
+if __name__ == '__main__':
+    unittest.main()
