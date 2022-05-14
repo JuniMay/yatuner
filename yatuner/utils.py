@@ -2,7 +2,7 @@ import os
 import subprocess
 import platform
 
-from yatuner.errors import CompileError
+import yatuner
 
 
 def execute(cmd) -> None:
@@ -10,21 +10,24 @@ def execute(cmd) -> None:
     
     Args:
         cmd: command to be executed.
+
+    Raises:
+        CompileError: if command return code is not 0.
     
     """
-    # p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     p = subprocess.Popen(cmd,
-                        shell=True,
-                         stdout=subprocess.DEVNULL,
-                         stderr=subprocess.DEVNULL)
+                         shell=True,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
 
     p.wait()
-    # if p.returncode != 0:
-    #     print(cmd)
-    #     print(p.communicate())
-    #     p.terminate()
-    #     raise CompileError()
-    # TODO: error handling under linux platform
+
+    if p.returncode != 0:
+        print(f"Error occured while executing {cmd}")
+        print(f"Return code: {p.returncode}")
+        print(f"Message: {p.communicate()}")
+        p.terminate()
+        raise yatuner.errors.ExecuteError()
 
     p.terminate()
 

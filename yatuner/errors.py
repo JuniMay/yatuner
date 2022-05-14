@@ -1,4 +1,7 @@
 
+class ExecuteError(Exception):
+    pass
+
 class CompileError(Exception):
     pass
 

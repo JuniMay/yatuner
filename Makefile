@@ -15,12 +15,16 @@ $(VENV):
 	$(BIN)/pip install -e .
 	touch $(VENV)
 
-.PHONY: test clean
+.PHONY: test clean init
 
-test: $(VENV)
+init:
+	mkdir -p tests/build
+
+test: $(VENV) init
 	$(BIN)/python3 -m unittest discover
 
 clean: 
 #	rm -rf $(VENV)
+	rm -rf tests/build
 	find . -type f -name *.pyc -delete
 	find . -type d -name __pycache__ -delete

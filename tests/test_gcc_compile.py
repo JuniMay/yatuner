@@ -5,13 +5,13 @@ import os
 
 class TestGccCompile(unittest.TestCase):
     def test_dummy(self):
-        gcc = yatuner.compiler.Gcc(infiles=['tests/samples/dummy.c'],
-                                   outfile='tests/samples/dummy')
+        gcc = yatuner.compilers.Gcc(infiles=['tests/samples/dummy.c'],
+                                   outfile='tests/build/dummy')
         gcc.execute()
 
     def test_hello_world(self):
-        gcc = yatuner.compiler.Gcc(infiles=['tests/samples/hello_world.c'],
-                                   outfile='tests/samples/hello_world')
+        gcc = yatuner.compilers.Gcc(infiles=['tests/samples/hello_world.c'],
+                                   outfile='tests/build/hello_world')
         gcc.execute()
 
 

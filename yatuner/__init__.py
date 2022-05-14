@@ -1,4 +1,4 @@
-from yatuner import compiler
+from yatuner import compilers
 from yatuner import utils
-from yatuner import optimizer
+from yatuner import optimizers
 from yatuner import errors
