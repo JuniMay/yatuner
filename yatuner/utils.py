@@ -3,6 +3,7 @@ import subprocess
 import platform
 
 import yatuner
+import time
 
 
 def execute(cmd) -> None:
@@ -15,7 +16,10 @@ def execute(cmd) -> None:
         CompileError: if command return code is not 0.
     
     """
-    with subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+    with subprocess.Popen(cmd,
+                          shell=True,
+                          stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE) as p:
         p.wait()
 
         if p.returncode != 0:
@@ -26,6 +30,28 @@ def execute(cmd) -> None:
             raise yatuner.errors.ExecuteError()
 
         p.terminate()
+
+
+def timing(cmd) -> float:
+    """Execute a command and timing
+
+    Args:
+        cmd: command to be executed.
+
+    Returns:
+        time consumed in ms
+    
+    """
+    t_st = time.perf_counter()
+    p = subprocess.Popen(cmd,
+                         shell=True,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    p.wait()
+    t_ed = time.perf_counter()
+    p.terminate()
+
+    return (t_ed - t_st) * 1000
 
 
 def fetch_platform() -> str:
