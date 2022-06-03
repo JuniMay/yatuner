@@ -2,6 +2,8 @@ import GPyOpt
 from typing import List
 from abc import abstractmethod
 
+import yatuner.utils
+
 
 class Optimizer(object):
     @abstractmethod
@@ -34,12 +36,18 @@ class BayesianOptimizer(Optimizer):
             pass
 
     def step(self, options: List[List[int]]) -> int:
-        if (self.goal == 'size'):
+        if self.goal == 'size':
             self.compiler.execute(options[0])
 
             size = self.compiler.fetch_size()
             print(size)
             return size
+        elif self.goal == 'time':
+            self.compiler.execute(options[0])
+
+            time = yatuner.utils.timing(self.compiler.outfile)
+            print(time)
+            return time
         else:
             raise NotImplementedError
 
