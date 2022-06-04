@@ -551,7 +551,6 @@ class Gcc(Compiler):
 
         return cmd
 
-
     def fetch_size(self) -> int:
         """Fetch file size of output file.
 
@@ -562,8 +561,4 @@ class Gcc(Compiler):
         if self.error is True:
             return float('inf')
 
-        if yatuner.utils.fetch_platform() == 'WINDOWS':
-            return yatuner.utils.fetch_file_size(
-                self.outfile.replace('/', '\\') + '.exe')
-        else:
-            return yatuner.utils.fetch_file_size(self.outfile)
+        return yatuner.utils.fetch_file_size(yatuner.utils.get_executable(self.outfile))

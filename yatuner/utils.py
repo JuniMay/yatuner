@@ -20,12 +20,12 @@ def execute(cmd) -> None:
                           shell=True,
                           stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE) as p:
-        p.wait()
+        stdout = p.communicate()
 
         if p.returncode != 0:
             print(f"Error occured while executing {cmd}")
             print(f"Return code: {p.returncode}")
-            print(f"Message: {p.communicate()}")
+            print(f"Message: {stdout[1].decode('GBK')}")
             p.terminate()
             raise yatuner.errors.ExecuteError()
 
@@ -42,14 +42,21 @@ def timing(cmd) -> float:
         time consumed in ms
     
     """
-    t_st = time.perf_counter()
-    p = subprocess.Popen(cmd,
+
+    with subprocess.Popen(cmd,
                          shell=True,
                          stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE)
-    p.wait()
-    t_ed = time.perf_counter()
-    p.terminate()
+                         stderr=subprocess.PIPE) as p:
+        t_st = time.perf_counter()
+        stdout = p.communicate()
+        t_ed = time.perf_counter()
+        if p.returncode != 0:
+            print(f"Error occured while executing {cmd}")
+            print(f"Return code: {p.returncode}")
+            print(f"Message: {stdout[1]}")
+            p.terminate()
+            return float('inf')
+        p.terminate()
 
     return (t_ed - t_st) * 1000
 
@@ -84,3 +91,20 @@ def fetch_file_size(path) -> int:
     """
 
     return os.path.getsize(path)
+
+
+def get_executable(filename) -> str:
+    """
+
+    Args:
+        filename: filename to execute
+
+    Returns:
+        cmd executable filename
+
+    """
+
+    if fetch_platform() == 'WINDOWS':
+        return filename.replace('/', '\\') + '.exe'
+    else:
+        return filename

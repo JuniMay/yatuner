@@ -44,8 +44,13 @@ class BayesianOptimizer(Optimizer):
             return size
         elif self.goal == 'time':
             self.compiler.execute(options[0])
-
-            time = yatuner.utils.timing(self.compiler.outfile)
+            # times = []
+            # for i in range(5):
+            #     time = yatuner.utils.timing(yatuner.utils.get_executable(self.compiler.outfile))
+            #     times.append(time)
+            # times.sort()
+            # time = sum(times[1:-1]) / 3
+            time = yatuner.utils.timing(yatuner.utils.get_executable(self.compiler.outfile))
             print(time)
             return time
         else:

@@ -30,13 +30,24 @@ class TestOptimize(unittest.TestCase):
         # convenient for Synodic to test on win
         gcc = yatuner.compilers.Gcc(infiles=['samples/euler.c'],
                                     outfile='build/euler')
-        gcc_o3 = yatuner.compilers.Gcc(infiles=['samples/euler.c'],
+        gcc_o2 = yatuner.compilers.Gcc(infiles=['samples/euler.c'],
                                        outfile='build/euler',
-                                       adds='-O3')
+                                       adds='-O2')
+        gcc_o0 = yatuner.compilers.Gcc(infiles=['samples/euler.c'],
+                                       outfile='build/euler')
         optimizer = yatuner.optimizers.BayesianOptimizer(gcc, goal='time')
-        optimizer.optimize(10)
-        gcc_o3.execute()
-        print("-O3 time: " + str(yatuner.utils.timing(gcc_o3.outfile)))
+        optimizer.optimize(20)
+        gcc_o2.execute()
+        # times = []
+        # for i in range(5):
+        #     time = yatuner.utils.timing(yatuner.utils.get_executable(gcc_o2.outfile))
+        #     times.append(time)
+        # times.sort()
+        # time = sum(times[1:-1]) / 3
+        time = yatuner.utils.timing(yatuner.utils.get_executable(gcc_o2.outfile))
+        print("-O2 time: " + str(time))
+        time = yatuner.utils.timing(yatuner.utils.get_executable(gcc_o0.outfile))
+        print("-O0 time: " + str(time))
 
     def test_benchmark(self):
         yatuner.compilers.Gcc(
