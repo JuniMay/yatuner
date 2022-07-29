@@ -179,8 +179,12 @@ class Optimizer:
                 [optimizer + '\n' for optimizer in self.selected_optimizers])
 
         plt.clf()
-        plt.hist(self.execute_data, density=True, alpha=0.5, label='test run')
+        bin_min = min(np.min(self.execute_data), np.min(hypotest_execute_data))
+        bin_max = max(np.max(self.execute_data), np.max(hypotest_execute_data))
+        bins = np.arange(bin_min, bin_max + 500, 500)
+        plt.hist(self.execute_data, bins=bins, density=True, alpha=0.5, label='test run')
         plt.hist(hypotest_execute_data,
+                 bins=bins,
                  density=True,
                  alpha=0.5,
                  label='hypotest-optimizers')
