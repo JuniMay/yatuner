@@ -17,7 +17,7 @@ $(VENV):
 
 .PHONY: test clean init
 
-init:
+init: $(VENV)
 	mkdir -p tests/build
 
 test: $(VENV) init

@@ -1,110 +1,114 @@
-import os
+from itertools import count
 import subprocess
+import re
+import os
+from typing import Any, Dict
+import numpy as np
 import platform
 
-import yatuner
-import time
 
-
-def execute(cmd) -> None:
+def execute(command, time_limit=None, memory_limit=None) -> Dict[str, Any]:
     """Execute given command.
-    
-    Args:
-        cmd: command to be executed.
-
-    Raises:
-        CompileError: if command return code is not 0.
-    
-    """
-    with subprocess.Popen(cmd,
-                          shell=True,
-                          stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE) as p:
-        stdout = p.communicate()
-
-        if p.returncode != 0:
-            print(f"Error occured while executing {cmd}")
-            print(f"Return code: {p.returncode}")
-            print(f"Message: {stdout[1].decode('GBK')}")
-            p.terminate()
-            raise yatuner.errors.ExecuteError()
-
-        p.terminate()
-
-
-def timing(cmd) -> float:
-    """Execute a command and timing
 
     Args:
-        cmd: command to be executed.
+        command: command to be executed.
 
-    Returns:
-        time consumed in ms
-    
     """
-
-    with subprocess.Popen(cmd,
+    # TODO: time & memory limit
+    p = subprocess.Popen(command,
                          shell=True,
                          stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE) as p:
-        t_st = time.perf_counter()
-        stdout = p.communicate()
-        t_ed = time.perf_counter()
-        if p.returncode != 0:
-            print(f"Error occured while executing {cmd}")
-            print(f"Return code: {p.returncode}")
-            print(f"Message: {stdout[1]}")
-            p.terminate()
-            return float('inf')
-        p.terminate()
+                         stderr=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    returncode = p.returncode
 
-    return (t_ed - t_st) * 1000
+    p.terminate()
+
+    return {
+        'returncode': returncode,
+        'stdout': stdout.decode(),
+        'stderr': stderr.decode(),
+    }
 
 
-def fetch_platform() -> str:
-    """Fetch current platform.
+def fetch_perf_stat(command) -> Dict[str, Any]:
+    """Use `perf stat <command>` to analyze given program and get dict of counters.
 
-    Returns:
-        A string indication platform.
-    
     """
+    perf_command = ('perf stat '
+                    ' -e user_time ' + command)  # TODO: auto detect events
 
-    p = platform.platform().upper()
+    res = execute(perf_command)
+    # print(res['stderr'])
 
-    if 'LINUX' in p:
-        return 'LINUX'
-    elif 'WINDOWS' in p:
-        return 'WINDOWS'
+    if res['returncode'] != 0:
+        raise RuntimeError(res['stderr'])
     else:
-        return 'UNKNOWN'
+        counter_tuples = re.findall(
+            (r'^\s+([\d.,]+|<not supported>+|<not counted>+)'
+             r'[\sa-z]*?([0-9a-zA-Z-_/]+[:/]u)'), res['stderr'], re.M)
+        counter_dict = dict(
+            (y, 0 if x in ['<not supported>', '<not counted>'] else float(
+                x.replace(',', ''))) for (x, y) in counter_tuples)
+
+        return counter_dict
 
 
-def fetch_file_size(path) -> int:
-    """Fetch size of given file.
-
-    Args:
-        path: path to the file
-
-    Returns:
-        The size of file by bytes.
-    
-    """
-
-    return os.path.getsize(path)
+def ir2vec(llvm_ir, outfile, mode='fa', vocab='vocab.txt', level='p'):
+    if (os.path.exists(outfile)):
+        os.remove(outfile)
+    command = (f'ir2vec -{mode} -vocab {vocab}'
+               f' -o {outfile} -level {level} {llvm_ir}')
+    res = execute(command)
+    if (res['returncode'] != 0):
+        raise RuntimeError(res)
+    vec = np.genfromtxt(outfile)
+    return vec
 
 
-def get_executable(filename) -> str:
-    """
+def generate_llvm(src, llvm_ir, llvm_compiler='clang') -> None:
+    command = f'{llvm_compiler} -S -emit-llvm -o {llvm_ir} {src}'
+    res = execute(command)
+    if (res['returncode'] != 0):
+        raise RuntimeError(res)
 
-    Args:
-        filename: filename to execute
 
-    Returns:
-        cmd executable filename
+def fetch_src_feature(src: str,
+                      llvm_ir=None,
+                      outfile=None,
+                      clean=False) -> np.array:
+    if llvm_ir is None:
+        llvm_ir = src + '.ll'
+    if outfile is None:
+        outfile = src + '.csv'
 
-    """
+    llvm_compiler = ''
 
-    if fetch_platform() == 'WINDOWS':
-        return filename.replace('/', '\\') + '.exe'
-    else:
-        return filename
+    if src.endswith(('.c')):
+        llvm_compiler = 'clang'
+    elif src.endswith(('.F')):
+        llvm_compiler = 'flang'
+    elif src.endswith(('.cpp', '.cc', '.cxx')):
+        llvm_compiler = 'clang++'
+
+    try:
+        generate_llvm(src, llvm_ir, llvm_compiler)
+    except RuntimeError as err:
+        print('[ ERROR ] llvm-ir: ', err)  # TODO: print -> log
+
+    try:
+        vec = ir2vec(llvm_ir, outfile)
+    except RuntimeError as err:
+        print('[ ERROR ] ir2vec: ', err)
+
+    if (clean):
+        if (os.path.exists(llvm_ir)):
+            os.remove(llvm_ir)
+
+        if (os.path.exists(outfile)):
+            os.remove(outfile)
+
+    return vec
+
+def fetch_arch() -> str:
+    return platform.machine()
