@@ -35,21 +35,24 @@ def fetch_perf_stat(command) -> Dict[str, Any]:
     """Use `perf stat <command>` to analyze given program and get dict of counters.
 
     """
-    perf_command = ('perf stat '
-                    ' -e user_time ' + command)  # TODO: auto detect events
+    perf_command = ('perf stat -x,'
+                    ' -e user_time '
+                    ' -e duration_time '
+                    ' -e cpu-cycles ' + command)  # TODO: auto detect events
 
     res = execute(perf_command)
-    # print(res['stderr'])
 
     if res['returncode'] != 0:
         raise RuntimeError(res['stderr'])
     else:
-        counter_tuples = re.findall(
-            (r'^\s+([\d.,]+|<not supported>+|<not counted>+)'
-             r'[\sa-z]*?([0-9a-zA-Z-_/]+[:/]u)'), res['stderr'], re.M)
+        counter_tuples = []
+        for line in res['stderr'].splitlines():
+            stat = line.split(',')
+            counter_tuples.append((stat[2], stat[0]))
+        # print(counter_tuples)
         counter_dict = dict(
-            (y, 0 if x in ['<not supported>', '<not counted>'] else float(
-                x.replace(',', ''))) for (x, y) in counter_tuples)
+            (x, 0 if y in ['<not supported>', '<not counted>'] else float(y))
+            for (x, y) in counter_tuples)
 
         return counter_dict
 
@@ -109,6 +112,7 @@ def fetch_src_feature(src: str,
             os.remove(outfile)
 
     return vec
+
 
 def fetch_arch() -> str:
     return platform.machine()

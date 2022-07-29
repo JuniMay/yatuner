@@ -1,6 +1,7 @@
 from copy import deepcopy
 from inspect import Parameter
 import os
+from pickletools import optimize
 
 import numpy as np
 import yatuner
@@ -23,7 +24,8 @@ class Optimizer:
                  params_def_path='params.def',
                  template='{cc} {options}  -o {out} {src}',
                  use_vm=True,
-                 cache_dir='yatuner.db') -> None:
+                 cache_dir='yatuner.db',
+                 optimize_base='-O2') -> None:
 
         logging.basicConfig(level=logging.DEBUG,
                             format='[ %(name)s ] %(message)s',
@@ -43,6 +45,7 @@ class Optimizer:
         self.use_vm = use_vm
         self.cc = cc
         self.cache_dir = cache_dir
+        self.optimize_base = optimize_base
 
     def initialize(self):
         self.logger.info("initializing...")
@@ -87,13 +90,16 @@ class Optimizer:
         self.logger.info(f"optimizers {len(self.optimizers)}")
         self.logger.info(f"parameters {len(self.parameters)}")
 
-    def test_run(self):
-        self.compiler.compile('-O3')
+    def test_run(self, num_samples=200, warmup=50):
+        self.compiler.compile(self.optimize_base)
         self.execute_data = []
 
-        for _ in track(range(200), description='test run'):
-            time = yatuner.utils.fetch_perf_stat(
-                self.execute_cmd)['user_time:u'] / 1000
+        for i in track(range(warmup), description=' warmup'):
+            time = self.call_and_timing()
+            self.logger.debug(f"warmup {i}/{warmup} time: {time}")
+
+        for _ in track(range(num_samples), description='testrun'):
+            time = self.call_and_timing()
             self.execute_data.append(time)
 
         self.u = np.mean(self.execute_data)
@@ -112,9 +118,15 @@ class Optimizer:
         plt.hist(self.execute_data, bins=50, density=True, label='test run')
         plt.legend()
         plt.savefig(self.cache_dir + "/test_run_distribution.png")
+        
+
+    def call_and_timing(self) -> float:
+        time = yatuner.utils.fetch_perf_stat(
+            self.execute_cmd)['cpu-cycles'] / 1000
+        return time
 
     def hypotest_optimizers(self,
-                            num_samples=20,
+                            num_samples=10,
                             z_threshold=0.05,
                             t_threshold=0.05):
         self.selected_optimizers = []
@@ -123,7 +135,7 @@ class Optimizer:
 
         for i, optimizer in enumerate(self.optimizers):
             try:
-                self.compiler.compile(f'-O3 {optimizer} ')
+                self.compiler.compile(f'{self.optimize_base} {optimizer} ')
             except RuntimeError as err:
                 self.logger.error(f"[red]compile error with {optimizer}[/]")
                 self.logger.exception(err)
@@ -134,8 +146,7 @@ class Optimizer:
 
             for j in range(num_samples):
                 try:
-                    t = yatuner.utils.fetch_perf_stat(
-                        self.execute_cmd)['user_time:u'] / 1000
+                    t = self.call_and_timing()
                 except RuntimeError as err:
                     self.logger.error(f"[red]runtime error for {optimizer}[/]")
                     self.logger.exception(err)
@@ -176,7 +187,7 @@ class Optimizer:
         plt.legend()
         plt.savefig(self.cache_dir + "/hypotest_optimizers_distribution.png")
 
-    def hypotest_parameters(self, num_samples=20, t_threshold=0.05):
+    def hypotest_parameters(self, num_samples=10, t_threshold=0.05):
 
         if os.path.exists(self.cache_dir + '/selected_optimizers.txt'):
             self.selected_optimizers = []
@@ -190,7 +201,7 @@ class Optimizer:
             self.logger.info(
                 f"loaded {len(self.selected_optimizers)} optimizers")
 
-        options = '-O3 '
+        options = f'{self.optimize_base} '
         for option in self.selected_optimizers:
             options += f'{option} '
 
@@ -209,7 +220,7 @@ class Optimizer:
 
             for j in range(num_samples):
                 t = yatuner.utils.fetch_perf_stat(
-                    self.execute_cmd)['user_time:u'] / 1000
+                    self.execute_cmd)['duration_time'] / 1000
                 samples_min[j] = t
 
             samples_max = np.zeros(num_samples)
@@ -221,8 +232,7 @@ class Optimizer:
                 continue
 
             for j in range(num_samples):
-                t = yatuner.utils.fetch_perf_stat(
-                    self.execute_cmd)['user_time:u'] / 1000
+                t = self.call_and_timing()
                 samples_max[j] = t
 
             l = stats.levene(samples_min, samples_max).pvalue
@@ -260,7 +270,7 @@ class Optimizer:
             self.logger.info(
                 f"loaded {len(self.selected_optimizers)} optimizers")
 
-        options = '-O3 '
+        options = f'{self.optimize_base} '
         for option in self.selected_optimizers:
             options += f'{option} '
 
@@ -274,7 +284,7 @@ class Optimizer:
         t = 0
         for _ in track(range(num_samples), "before optimization"):
             t += yatuner.utils.fetch_perf_stat(
-                self.execute_cmd)['user_time:u'] / 1000
+                self.execute_cmd)['duration_time'] / 1000
         t /= num_samples
         self.logger.info(f"execution time before optimize: {t}")
 
@@ -309,8 +319,7 @@ class Optimizer:
 
             t = 0
             for _ in track(range(num_samples), f'step {cnt}'):
-                t += yatuner.utils.fetch_perf_stat(
-                    self.execute_cmd)['user_time:u'] / 1000
+                t += self.call_and_timing()
             t /= num_samples
 
             self.logger.debug(f'{cnt}/{num_epochs} result: {t:.2f}')
@@ -347,7 +356,7 @@ class Optimizer:
 
                 file.write(f'{parameter} {int(v)}\n')
 
-    def run(self, num_samples=20):
+    def run(self, num_samples=10):
         samples_ofast = np.zeros(num_samples)
         samples_o0 = np.zeros(num_samples)
         samples_o1 = np.zeros(num_samples)
@@ -358,32 +367,27 @@ class Optimizer:
 
         self.compiler.compile('-Ofast')
         for i in track(range(num_samples), description='-Ofast'):
-            t = yatuner.utils.fetch_perf_stat(
-                self.execute_cmd)['user_time:u'] / 1000
+            t = self.call_and_timing()
             samples_ofast[i] = t
 
         self.compiler.compile('-O0')
         for i in track(range(num_samples), description='   -O0'):
-            t = yatuner.utils.fetch_perf_stat(
-                self.execute_cmd)['user_time:u'] / 1000
+            t = self.call_and_timing()
             samples_o0[i] = t
 
         self.compiler.compile('-O1')
         for i in track(range(num_samples), description='   -O1'):
-            t = yatuner.utils.fetch_perf_stat(
-                self.execute_cmd)['user_time:u'] / 1000
+            t = self.call_and_timing()
             samples_o1[i] = t
 
         self.compiler.compile('-O2')
         for i in track(range(num_samples), description='   -O2'):
-            t = yatuner.utils.fetch_perf_stat(
-                self.execute_cmd)['user_time:u'] / 1000
+            t = self.call_and_timing()
             samples_o2[i] = t
 
         self.compiler.compile('-O3')
         for i in track(range(num_samples), description='   -O3'):
-            t = yatuner.utils.fetch_perf_stat(
-                self.execute_cmd)['user_time:u'] / 1000
+            t = self.call_and_timing()
             samples_o3[i] = t
 
         if os.path.exists(self.cache_dir + '/selected_optimizers.txt'):
@@ -400,14 +404,13 @@ class Optimizer:
         else:
             pass
 
-        options = '-O3 '
+        options = f'{self.optimize_base} '
         for option in self.selected_optimizers:
             options += f'{option} '
 
         self.compiler.compile(options)
         for i in track(range(num_samples), description='optimizers'):
-            t = yatuner.utils.fetch_perf_stat(
-                self.execute_cmd)['user_time:u'] / 1000
+            t = self.call_and_timing()
             samples_optimizers[i] = t
 
         if os.path.exists(self.cache_dir + '/optimized_parameters.txt'):
@@ -426,8 +429,7 @@ class Optimizer:
 
         self.compiler.compile(options)
         for i in track(range(num_samples), description='parameters'):
-            t = yatuner.utils.fetch_perf_stat(
-                self.execute_cmd)['user_time:u'] / 1000
+            t = self.call_and_timing()
             samples_parameters[i] = t
 
         plt.clf()
@@ -456,10 +458,11 @@ if __name__ == '__main__':
     optimizer = yatuner.optimizer.Optimizer(src=src,
                                             out=out,
                                             cc='g++',
-                                            use_vm=False)
+                                            use_vm=False,
+                                            optimize_base='-O3')
     optimizer.initialize()
-    optimizer.test_run()
-    optimizer.hypotest_optimizers()
-    optimizer.hypotest_parameters()
-    optimizer.optimize()
-    optimizer.run()
+    optimizer.test_run(num_samples=200, warmup=50)
+    optimizer.hypotest_optimizers(num_samples=5)
+    optimizer.hypotest_parameters(num_samples=5)
+    optimizer.optimize(num_samples=5)
+    optimizer.run(num_samples=50)
