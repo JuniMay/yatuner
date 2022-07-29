@@ -91,7 +91,7 @@ class Optimizer:
         self.compiler.compile('-O3')
         self.execute_data = []
 
-        for _ in track(range(200), description='test run'):
+        for _ in track(range(50), description='test run'):
             time = yatuner.utils.fetch_perf_stat(
                 self.execute_cmd)['user_time:u'] / 1000
             self.execute_data.append(time)
@@ -114,7 +114,7 @@ class Optimizer:
         plt.savefig(self.cache_dir + "/test_run_distribution.png")
 
     def hypotest_optimizers(self,
-                            num_samples=20,
+                            num_samples=5,
                             z_threshold=0.05,
                             t_threshold=0.05):
         self.selected_optimizers = []
@@ -168,8 +168,12 @@ class Optimizer:
                 [optimizer + '\n' for optimizer in self.selected_optimizers])
 
         plt.clf()
-        plt.hist(self.execute_data, density=True, alpha=0.5, label='test run')
+        bin_min = min(np.min(self.execute_data), np.min(hypotest_execute_data))
+        bin_max = max(np.max(self.execute_data), np.max(hypotest_execute_data))
+        bins = np.arange(bin_min, bin_max + 500, 500)
+        plt.hist(self.execute_data, bins=bins, density=True, alpha=0.5, label='test run')
         plt.hist(hypotest_execute_data,
+                 bins=bins,
                  density=True,
                  alpha=0.5,
                  label='hypotest-optimizers')

@@ -15,7 +15,7 @@ $(VENV):
 	$(BIN)/pip install -e .
 	touch $(VENV)
 
-.PHONY: test clean init
+.PHONY: test clean init $(VENV)
 
 init: $(VENV)
 	mkdir -p tests/build
