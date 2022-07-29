@@ -1,7 +1,5 @@
 from copy import deepcopy
-from inspect import Parameter
 import os
-from pickletools import optimize
 
 import numpy as np
 import yatuner
@@ -25,7 +23,8 @@ class Optimizer:
                  template='{cc} {options}  -o {out} {src}',
                  use_vm=True,
                  cache_dir='yatuner.db',
-                 optimize_base='-O2') -> None:
+                 optimize_base='-O3',
+                 timing_method = 'cpu-cycles') -> None:
 
         logging.basicConfig(level=logging.DEBUG,
                             format='[ %(name)s ] %(message)s',
@@ -46,6 +45,7 @@ class Optimizer:
         self.cc = cc
         self.cache_dir = cache_dir
         self.optimize_base = optimize_base
+        self.timing_method = timing_method
 
     def initialize(self):
         self.logger.info("initializing...")
@@ -132,7 +132,13 @@ class Optimizer:
 
     def call_and_timing(self) -> float:
         time = yatuner.utils.fetch_perf_stat(
-            self.execute_cmd)['cpu-cycles'] / 1000
+            self.execute_cmd)[self.timing_method] / 1000
+        if time == 0 and self.timing_method == 'cpu-cycles':
+            self.logger.warning(
+                "[red]cpu-cycles not supported, falling back to duration_time[/]")
+            self.timing_method = 'duration_time'
+            time = yatuner.utils.fetch_perf_stat(
+                self.execute_cmd)[self.timing_method] / 1000
         return time
 
     def hypotest_optimizers(self,
@@ -237,8 +243,7 @@ class Optimizer:
                 continue
 
             for j in range(num_samples):
-                t = yatuner.utils.fetch_perf_stat(
-                    self.execute_cmd)['duration_time'] / 1000
+                t = self.call_and_timing()
                 samples_min[j] = t
 
             samples_max = np.zeros(num_samples)
@@ -301,8 +306,7 @@ class Optimizer:
 
         t = 0
         for _ in track(range(num_samples), "before optimization"):
-            t += yatuner.utils.fetch_perf_stat(
-                self.execute_cmd)['duration_time'] / 1000
+            t += self.call_and_timing()
         t /= num_samples
         self.logger.info(f"execution time before optimize: {t}")
 
@@ -450,17 +454,33 @@ class Optimizer:
             t = self.call_and_timing()
             samples_parameters[i] = t
 
+        bin_min = min(np.min(samples_o1), 
+                      np.min(samples_o2),
+                      np.min(samples_o3),
+                      np.min(samples_ofast),
+                      np.min(samples_optimizers),
+                      np.min(samples_parameters))
+        bin_max = max(np.max(samples_o1), 
+                      np.max(samples_o2),
+                      np.max(samples_o3),
+                      np.max(samples_ofast),
+                      np.max(samples_optimizers),
+                      np.max(samples_parameters))
+        bins = np.arange(bin_min, bin_max + 500, 500)
+
         plt.clf()
         # plt.hist(samples_o0, density=True, alpha=0.5, label='O0')
-        plt.hist(samples_o1, density=True, alpha=0.5, label='O1')
-        plt.hist(samples_o2, density=True, alpha=0.5, label='O2')
-        plt.hist(samples_o3, density=True, alpha=0.5, label='O3')
-        plt.hist(samples_ofast, density=True, alpha=0.5, label='Ofast')
+        plt.hist(samples_o1, bins=bins, density=True, alpha=0.5, label='O1')
+        plt.hist(samples_o2, bins=bins, density=True, alpha=0.5, label='O2')
+        plt.hist(samples_o3, bins=bins, density=True, alpha=0.5, label='O3')
+        plt.hist(samples_ofast, bins=bins, density=True, alpha=0.5, label='Ofast')
         plt.hist(samples_optimizers,
+                 bins=bins,
                  density=True,
                  alpha=0.5,
                  label='Optimizers')
         plt.hist(samples_parameters,
+                 bins=bins,
                  density=True,
                  alpha=0.5,
                  label='Parameters')
@@ -479,8 +499,8 @@ if __name__ == '__main__':
                                             use_vm=False,
                                             optimize_base='-O3')
     optimizer.initialize()
-    optimizer.test_run(num_samples=100, warmup=0)
-    optimizer.hypotest_optimizers(num_samples=5)
-    optimizer.hypotest_parameters(num_samples=5)
-    optimizer.optimize(num_samples=5)
+    # optimizer.test_run(num_samples=100, warmup=0)
+    # optimizer.hypotest_optimizers(num_samples=5)
+    # optimizer.hypotest_parameters(num_samples=5)
+    # optimizer.optimize(num_samples=5)
     optimizer.run(num_samples=50)
