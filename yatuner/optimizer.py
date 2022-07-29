@@ -102,6 +102,9 @@ class Optimizer:
             time = self.call_and_timing()
             self.execute_data.append(time)
 
+        self.execute_data = np.sort(
+            self.execute_data)[:int(len(self.execute_data) * 0.7)]
+
         self.u = np.mean(self.execute_data)
         self.std = np.std(self.execute_data)
         kstest = stats.kstest(self.execute_data, 'norm', (self.u, self.std))
@@ -115,10 +118,17 @@ class Optimizer:
             self.logger.warning(
                 "[red]execution time disobey normal distribution[/]")
 
+        x = np.linspace(np.min(self.execute_data), np.max(self.execute_data),
+                        100)
+        kernel = stats.gaussian_kde(self.execute_data)
+        p = stats.norm.pdf(x, self.u, self.std)
+
         plt.hist(self.execute_data, bins=50, density=True, label='test run')
+        self.execute_data, l = stats.boxcox(np.array(self.execute_data))
+        plt.plot(x, kernel(x), 'k', linewidth=2)
+        plt.plot(x, p, 'k', linewidth=2)
         plt.legend()
         plt.savefig(self.cache_dir + "/test_run_distribution.png")
-        
 
     def call_and_timing(self) -> float:
         time = yatuner.utils.fetch_perf_stat(
@@ -182,7 +192,11 @@ class Optimizer:
         bin_min = min(np.min(self.execute_data), np.min(hypotest_execute_data))
         bin_max = max(np.max(self.execute_data), np.max(hypotest_execute_data))
         bins = np.arange(bin_min, bin_max + 500, 500)
-        plt.hist(self.execute_data, bins=bins, density=True, alpha=0.5, label='test run')
+        plt.hist(self.execute_data,
+                 bins=bins,
+                 density=True,
+                 alpha=0.5,
+                 label='test run')
         plt.hist(hypotest_execute_data,
                  bins=bins,
                  density=True,
@@ -465,7 +479,7 @@ if __name__ == '__main__':
                                             use_vm=False,
                                             optimize_base='-O3')
     optimizer.initialize()
-    optimizer.test_run(num_samples=200, warmup=50)
+    optimizer.test_run(num_samples=100, warmup=0)
     optimizer.hypotest_optimizers(num_samples=5)
     optimizer.hypotest_parameters(num_samples=5)
     optimizer.optimize(num_samples=5)
