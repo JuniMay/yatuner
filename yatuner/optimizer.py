@@ -8,6 +8,9 @@ import logging
 import GPyOpt
 
 from rich.logging import RichHandler
+from rich.table import Table
+from rich.console import Console
+from rich.text import Text
 from rich.progress import track
 from scipy import stats
 from matplotlib import pyplot as plt
@@ -24,7 +27,7 @@ class Optimizer:
                  use_vm=True,
                  cache_dir='yatuner.db',
                  optimize_base='-O3',
-                 timing_method = 'cpu-cycles') -> None:
+                 timing_method='cpu-cycles') -> None:
 
         logging.basicConfig(level=logging.DEBUG,
                             format='[ %(name)s ] %(message)s',
@@ -103,7 +106,7 @@ class Optimizer:
             self.execute_data.append(time)
 
         self.execute_data = np.sort(
-            self.execute_data)[:int(len(self.execute_data) * 0.7)]
+            self.execute_data)[:int(len(self.execute_data) * 0.8)]
 
         self.u = np.mean(self.execute_data)
         self.std = np.std(self.execute_data)
@@ -134,8 +137,8 @@ class Optimizer:
         time = yatuner.utils.fetch_perf_stat(
             self.execute_cmd)[self.timing_method] / 1000
         if time == 0 and self.timing_method == 'cpu-cycles':
-            self.logger.warning(
-                "[red]cpu-cycles not supported, falling back to duration_time[/]")
+            self.logger.warning("[red]cpu-cycles not supported, "
+                                "falling back to duration_time[/]")
             self.timing_method = 'duration_time'
             time = yatuner.utils.fetch_perf_stat(
                 self.execute_cmd)[self.timing_method] / 1000
@@ -195,19 +198,21 @@ class Optimizer:
                 [optimizer + '\n' for optimizer in self.selected_optimizers])
 
         plt.clf()
-        bin_min = min(np.min(self.execute_data), np.min(hypotest_execute_data))
-        bin_max = max(np.max(self.execute_data), np.max(hypotest_execute_data))
-        bins = np.arange(bin_min, bin_max + 500, 500)
-        plt.hist(self.execute_data,
-                 bins=bins,
-                 density=True,
-                 alpha=0.5,
-                 label='test run')
-        plt.hist(hypotest_execute_data,
-                 bins=bins,
-                 density=True,
-                 alpha=0.5,
-                 label='hypotest-optimizers')
+        # bin_min = min(np.min(self.execute_data), np.min(hypotest_execute_data))
+        # bin_max = max(np.max(self.execute_data), np.max(hypotest_execute_data))
+        # bins = np.arange(bin_min, bin_max + 500, 500)
+        plt.hist(
+            self.execute_data,
+            #  bins=bins,
+            density=True,
+            alpha=0.5,
+            label='test run')
+        plt.hist(
+            hypotest_execute_data,
+            #  bins=bins,
+            density=True,
+            alpha=0.5,
+            label='hypotest-optimizers')
         plt.legend()
         plt.savefig(self.cache_dir + "/hypotest_optimizers_distribution.png")
 
@@ -262,10 +267,10 @@ class Optimizer:
             p = stats.ttest_ind(samples_min, samples_max,
                                 equal_var=(l > 0.05)).pvalue
 
-            self.logger.debug(
-                f"{i}/{len(self.parameters)} {parameter} "
-                f"min: {np.mean(samples_min)}, max: {np.mean(samples_max)} "
-                f"l: {l:.2f}, p: {p:.2f}")
+            self.logger.debug(f"{i}/{len(self.parameters)} {parameter} "
+                              f"min: {np.mean(samples_min):.2f}, "
+                              f"max: {np.mean(samples_max):.2f} "
+                              f"l: {l:.2f}, p: {p:.2f}")
 
             if p < t_threshold:
                 self.selected_parameters.append(parameter)
@@ -392,10 +397,10 @@ class Optimizer:
             t = self.call_and_timing()
             samples_ofast[i] = t
 
-        self.compiler.compile('-O0')
-        for i in track(range(num_samples), description='   -O0'):
-            t = self.call_and_timing()
-            samples_o0[i] = t
+        # self.compiler.compile('-O0')
+        # for i in track(range(num_samples), description='   -O0'):
+        #     t = self.call_and_timing()
+        #     samples_o0[i] = t
 
         self.compiler.compile('-O1')
         for i in track(range(num_samples), description='   -O1'):
@@ -454,18 +459,12 @@ class Optimizer:
             t = self.call_and_timing()
             samples_parameters[i] = t
 
-        bin_min = min(np.min(samples_o1), 
-                      np.min(samples_o2),
-                      np.min(samples_o3),
-                      np.min(samples_ofast),
-                      np.min(samples_optimizers),
-                      np.min(samples_parameters))
-        bin_max = max(np.max(samples_o1), 
-                      np.max(samples_o2),
-                      np.max(samples_o3),
-                      np.max(samples_ofast),
-                      np.max(samples_optimizers),
-                      np.max(samples_parameters))
+        bin_min = min(np.min(samples_o1), np.min(samples_o2),
+                      np.min(samples_o3), np.min(samples_ofast),
+                      np.min(samples_optimizers), np.min(samples_parameters))
+        bin_max = max(np.max(samples_o1), np.max(samples_o2),
+                      np.max(samples_o3), np.max(samples_ofast),
+                      np.max(samples_optimizers), np.max(samples_parameters))
         bins = np.arange(bin_min, bin_max + 500, 500)
 
         plt.clf()
@@ -473,7 +472,11 @@ class Optimizer:
         plt.hist(samples_o1, bins=bins, density=True, alpha=0.5, label='O1')
         plt.hist(samples_o2, bins=bins, density=True, alpha=0.5, label='O2')
         plt.hist(samples_o3, bins=bins, density=True, alpha=0.5, label='O3')
-        plt.hist(samples_ofast, bins=bins, density=True, alpha=0.5, label='Ofast')
+        plt.hist(samples_ofast,
+                 bins=bins,
+                 density=True,
+                 alpha=0.5,
+                 label='Ofast')
         plt.hist(samples_optimizers,
                  bins=bins,
                  density=True,
@@ -489,6 +492,44 @@ class Optimizer:
         plt.legend()
         plt.savefig(self.cache_dir + "/result.png")
 
+        mean_ofast = samples_ofast.mean()
+        # mean_o0 = samples_o0.mean()
+        mean_o1 = samples_o1.mean()
+        mean_o2 = samples_o2.mean()
+        mean_o3 = samples_o3.mean()
+        mean_optimizers = samples_optimizers.mean()
+        mean_parameters = samples_parameters.mean()
+
+        minimal = min(mean_ofast, mean_o1, mean_o2, mean_o3, mean_optimizers,
+                      mean_parameters)
+
+        score_ofast = 100 * minimal / mean_ofast
+        score_o1 = 100 * minimal / mean_o1
+        score_o2 = 100 * minimal / mean_o2
+        score_o3 = 100 * minimal / mean_o3
+        score_optimizers = 100 * minimal / mean_optimizers
+        score_parameters = 100 * minimal / mean_parameters
+
+        delta_optimizers = (score_optimizers - score_o2) / score_o2 * 100
+        delta_parameters = (score_parameters - score_o2) / score_o2 * 100
+
+        table = Table(title="Result")
+        table.add_column("Method")
+        table.add_column(f"Result ({self.timing_method})", style="cyan")
+        table.add_column("Score", style="green")
+        table.add_column("Delta", style="green")
+        table.add_row("Ofast", f"{mean_ofast:.2f}", f"{score_ofast:.2f}", "")
+        table.add_row("O1", f"{mean_o1:.2f}", f"{score_o1:.2f}", "")
+        table.add_row("O2", f"{mean_o2:.2f}", f"{score_o2:.2f}", "")
+        table.add_row("O3", f"{mean_o3:.2f}", f"{score_o3:.2f}", "")
+        table.add_row("Optimizers", f"{mean_optimizers:.2f}",
+                      f"{score_optimizers:.2f}", f"{delta_optimizers:.2f}%")
+        table.add_row("Parameters", f"{mean_parameters:.2f}",
+                      f"{score_parameters:.2f}", f"{delta_parameters:.2f}%")
+
+        console = Console()
+        console.print(table)
+
 
 if __name__ == '__main__':
     src = 'tests/src/united.cpp'
@@ -499,7 +540,7 @@ if __name__ == '__main__':
                                             use_vm=False,
                                             optimize_base='-O3')
     optimizer.initialize()
-    # optimizer.test_run(num_samples=100, warmup=0)
+    # optimizer.test_run(num_samples=100, warmup=20)
     # optimizer.hypotest_optimizers(num_samples=5)
     # optimizer.hypotest_parameters(num_samples=5)
     # optimizer.optimize(num_samples=5)
