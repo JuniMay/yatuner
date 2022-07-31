@@ -7,7 +7,7 @@ import numpy as np
 import platform
 
 
-def execute(command, time_limit=None, memory_limit=None) -> Dict[str, Any]:
+def execute(command) -> Dict[str, Any]:
     """Execute given command.
 
     Args:
