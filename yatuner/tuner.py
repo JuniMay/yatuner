@@ -13,6 +13,8 @@ from rich.console import Console
 from rich.progress import track
 from scipy import stats
 from matplotlib import pyplot as plt
+import seaborn as sns
+import pandas as pd
 
 
 class Tuner:
@@ -436,6 +438,21 @@ class Tuner:
         plt.ylabel("Density")
         plt.legend()
         plt.savefig(self.workspace + "/result.png")
+
+        plt.clf()
+        pd_data = pd.DataFrame({'O1' : samples_o1,
+                                'O2' : samples_o2,
+                                'O3' : samples_o3,
+                                'Ofast' : samples_ofast,
+                                'Optimizers' : samples_optimizers,
+                                'parameters' : samples_parameters})
+        pd_data.to_csv(self.workspace + "/result.csv")
+        sns.violinplot(data=pd_data, orient='horizontal')
+        plt.title('Time Comparison')
+        plt.ylabel('Optimization_methods')
+        plt.xlabel('Time/Tick - Lower the better')
+        plt.savefig(self.workspace + "/result_violin.png")
+        
 
         mean_ofast = samples_ofast.mean()
         # mean_o0 = samples_o0.mean()
