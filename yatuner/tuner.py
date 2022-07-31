@@ -1,5 +1,5 @@
-from copy import deepcopy
 import os
+from typing import Callable, Mapping, Sequence, Tuple
 
 import numpy as np
 import yatuner
@@ -10,107 +10,59 @@ import GPyOpt
 from rich.logging import RichHandler
 from rich.table import Table
 from rich.console import Console
-from rich.text import Text
 from rich.progress import track
 from scipy import stats
 from matplotlib import pyplot as plt
 
 
-class Optimizer:
+class Tuner:
 
     def __init__(self,
-                 src: str = None,
-                 out: str = None,
-                 cc='gcc',
-                 params_def_path='params.def',
-                 template='{cc} {options}  -o {out} {src}',
-                 use_vm=True,
-                 cache_dir='yatuner.db',
-                 optimize_base='-O3',
-                 timing_method='cpu-cycles') -> None:
+                 call_compile: Callable[[Sequence[str], Mapping, str], None],
+                 call_running: Callable[[], float],
+                 optimizers: Sequence[str],
+                 parameters: Mapping[str, Tuple],
+                 workspace='yatuner.db',
+                 log_level=logging.DEBUG) -> None:
 
-        logging.basicConfig(level=logging.DEBUG,
+        logging.basicConfig(level=log_level,
                             format='[ %(name)s ] %(message)s',
                             handlers=[
-                                RichHandler(level=logging.DEBUG,
+                                RichHandler(level=log_level,
                                             markup=True,
                                             show_path=False)
                             ])
         self.logger = logging.getLogger('yatuner')
 
-        self.compiler = yatuner.Gcc(src=src,
-                                    out=out,
-                                    cc=cc,
-                                    params_def_path=params_def_path,
-                                    template=template)
-
-        self.use_vm = use_vm
-        self.cc = cc
-        self.cache_dir = cache_dir
-        self.optimize_base = optimize_base
-        self.timing_method = timing_method
+        self.call_compile = call_compile
+        self.call_running = call_running
+        self.optimizers = optimizers
+        self.parameters = parameters
+        self.workspace = workspace
 
     def initialize(self):
-        self.logger.info("initializing...")
-
-        self.arch = yatuner.utils.fetch_arch()
-
-        self.logger.info(f'arch [bold green]{self.arch}[/]')
-
-        if yatuner.utils.execute('perf --help')['returncode'] != 0:
-            self.logger.warning('perf ... [bold red]FAILD[/]')
-        else:
-            self.logger.info('perf ... [bold green]OK[/]')
-
-        if yatuner.utils.execute(f'{self.cc} --help')['returncode'] != 0:
-            self.logger.warning(f'{self.cc} ... [bold red]FAILD[/]')
-        else:
-            self.logger.info(f'{self.cc} ... [bold green]OK[/]')
-
-        if self.use_vm:
-            if self.arch == 'x86_64':
-                qemu_cmd = 'qemu-x86_64'
-            elif self.arch == 'arm':
-                qemu_cmd = 'qemu-arm'
-            else:
-                qemu_cmd = ''
-
-            if yatuner.utils.execute(f'{qemu_cmd} --help')['returncode'] != 0:
-                self.logger.warning('qemu ... [bold red]FAILD[/]')
-            else:
-                self.logger.info('qemu ... [bold green]OK[/]')
-
-        self.execute_cmd = self.compiler.fetch_execute_cmd()
-        if self.use_vm:
-            self.execute_cmd = f'{qemu_cmd} {self.execute_cmd}'
-
-        if not os.path.exists(self.cache_dir):
-            os.mkdir(self.cache_dir)
-
-        self.optimizers = self.compiler.fetch_optimizers()
-        self.parameters = self.compiler.fetch_parameters()
-
-        self.logger.info(f"optimizers {len(self.optimizers)}")
-        self.logger.info(f"parameters {len(self.parameters)}")
+        if not os.path.isdir(self.workspace):
+            self.logger.info("workspace is not detected, creating one.")
+            os.mkdir(self.workspace)
 
     def test_run(self, num_samples=200, warmup=50):
-        self.compiler.compile(self.optimize_base)
-        self.execute_data = []
+        self.call_compile(None, None, None)
+        self.exec_data = []
 
         for i in track(range(warmup), description=' warmup'):
-            time = self.call_and_timing()
-            self.logger.debug(f"warmup {i}/{warmup} time: {time}")
+            res = self.call_running()
+            self.logger.debug(f"warmup {i}/{warmup} result: {res}")
 
         for _ in track(range(num_samples), description='testrun'):
-            time = self.call_and_timing()
-            self.execute_data.append(time)
+            res = self.call_running()
+            self.exec_data.append(res)
 
-        self.execute_data = np.sort(
-            self.execute_data)[:int(len(self.execute_data) * 0.8)]
+        self.exec_data = np.sort(
+            self.exec_data)[:int(len(self.exec_data) * 0.8)]
 
-        self.u = np.mean(self.execute_data)
-        self.std = np.std(self.execute_data)
-        kstest = stats.kstest(self.execute_data, 'norm', (self.u, self.std))
+        self.u = np.mean(self.exec_data)
+        self.std = np.std(self.exec_data)
+        kstest = stats.kstest(self.exec_data, 'norm', (self.u, self.std))
 
         self.logger.info(
             f"test run finished with u: {self.u:.2f}, std: {self.std:.2f}")
@@ -121,40 +73,32 @@ class Optimizer:
             self.logger.warning(
                 "[red]execution time disobey normal distribution[/]")
 
-        x = np.linspace(np.min(self.execute_data), np.max(self.execute_data),
-                        100)
-        kernel = stats.gaussian_kde(self.execute_data)
+        x = np.linspace(np.min(self.exec_data), np.max(self.exec_data), 100)
+        kernel = stats.gaussian_kde(self.exec_data)
         p = stats.norm.pdf(x, self.u, self.std)
 
-        plt.hist(self.execute_data, bins=50, density=True, label='test run')
-        self.execute_data, l = stats.boxcox(np.array(self.execute_data))
+        plt.hist(self.exec_data, bins=50, density=True, label='test run')
         plt.plot(x, kernel(x), 'k', linewidth=2)
         plt.plot(x, p, 'k', linewidth=2)
         plt.legend()
-        plt.savefig(self.cache_dir + "/test_run_distribution.png")
-
-    def call_and_timing(self) -> float:
-        time = yatuner.utils.fetch_perf_stat(
-            self.execute_cmd)[self.timing_method] / 1000
-        if time == 0 and self.timing_method == 'cpu-cycles':
-            self.logger.warning("[red]cpu-cycles not supported, "
-                                "falling back to duration_time[/]")
-            self.timing_method = 'duration_time'
-            time = yatuner.utils.fetch_perf_stat(
-                self.execute_cmd)[self.timing_method] / 1000
-        return time
+        plt.savefig(self.workspace + "/test_run_distribution.png")
 
     def hypotest_optimizers(self,
                             num_samples=10,
                             z_threshold=0.05,
                             t_threshold=0.05):
+
+        if os.path.exists(self.workspace + '/selected_optimizers.txt'):
+            self.logger.info("using existing selected optimizers.")
+            return
+
         self.selected_optimizers = []
 
-        hypotest_execute_data = []
+        hypotest_exec_data = []
 
         for i, optimizer in enumerate(self.optimizers):
             try:
-                self.compiler.compile(f'{self.optimize_base} {optimizer} ')
+                self.call_compile([optimizer], None, None)
             except RuntimeError as err:
                 self.logger.error(f"[red]compile error with {optimizer}[/]")
                 self.logger.exception(err)
@@ -165,15 +109,15 @@ class Optimizer:
 
             for j in range(num_samples):
                 try:
-                    t = self.call_and_timing()
+                    res = self.call_running()
                 except RuntimeError as err:
                     self.logger.error(f"[red]runtime error for {optimizer}[/]")
                     self.logger.exception(err)
                     err = True
                     break
 
-                samples[j] = t
-                hypotest_execute_data.append(t)
+                samples[j] = res
+                hypotest_exec_data.append(res)
 
             if err:
                 continue
@@ -185,42 +129,46 @@ class Optimizer:
 
             self.logger.debug(f"{i}/{len(self.optimizers)} {optimizer} "
                               f"u: {self.u:.2f} -> {samples_mean:.2f}, "
-                              f"p: {p:.2f}, t: {t:.2f}")
+                              f"p: {p:.2f}, res: {res:.2f}")
 
             if (p < z_threshold or t < t_threshold) and z < 0:
                 self.selected_optimizers.append(optimizer)
                 self.logger.info(f"[green]{optimizer} is selected[/]")
 
-        with open(self.cache_dir + '/selected_optimizers.txt',
+        with open(self.workspace + '/selected_optimizers.txt',
                   'w',
                   encoding='utf-8') as f:
             f.writelines(
                 [optimizer + '\n' for optimizer in self.selected_optimizers])
 
         plt.clf()
-        # bin_min = min(np.min(self.execute_data), np.min(hypotest_execute_data))
-        # bin_max = max(np.max(self.execute_data), np.max(hypotest_execute_data))
+        # bin_min = min(np.min(self.exec_data), np.min(hypotest_exec_data))
+        # bin_max = max(np.max(self.exec_data), np.max(hypotest_exec_data))
         # bins = np.arange(bin_min, bin_max + 500, 500)
         plt.hist(
-            self.execute_data,
+            self.exec_data,
             #  bins=bins,
             density=True,
             alpha=0.5,
             label='test run')
         plt.hist(
-            hypotest_execute_data,
+            hypotest_exec_data,
             #  bins=bins,
             density=True,
             alpha=0.5,
             label='hypotest-optimizers')
         plt.legend()
-        plt.savefig(self.cache_dir + "/hypotest_optimizers_distribution.png")
+        plt.savefig(self.workspace + "/hypotest_optimizers_distribution.png")
 
     def hypotest_parameters(self, num_samples=10, t_threshold=0.05):
 
-        if os.path.exists(self.cache_dir + '/selected_optimizers.txt'):
+        if os.path.exists(self.workspace + '/selected_parameters.txt'):
+            self.logger.info("using existing selected parameters")
+            return
+
+        if os.path.exists(self.workspace + '/selected_optimizers.txt'):
             self.selected_optimizers = []
-            with open(self.cache_dir + '/selected_optimizers.txt',
+            with open(self.workspace + '/selected_optimizers.txt',
                       'r',
                       encoding='utf-8') as file:
                 self.selected_optimizers = [
@@ -229,10 +177,11 @@ class Optimizer:
 
             self.logger.info(
                 f"loaded {len(self.selected_optimizers)} optimizers")
-
-        options = f'{self.optimize_base} '
-        for option in self.selected_optimizers:
-            options += f'{option} '
+        else:
+            self.logger.error(
+                "no selected optimizers detected, "
+                "please run hypothesis test for optimizers first.")
+            return
 
         self.selected_parameters = []
         i = 0
@@ -241,27 +190,29 @@ class Optimizer:
 
             samples_min = np.zeros(num_samples)
             try:
-                self.compiler.compile(f'{options} --param={parameter}={r_min}')
+                self.call_compile(self.selected_optimizers, {parameter: r_min},
+                                  None)
             except RuntimeError as err:
                 self.logger.error(f"[red]compile error with {parameter}[/]")
                 self.logger.exception(err)
                 continue
 
             for j in range(num_samples):
-                t = self.call_and_timing()
-                samples_min[j] = t
+                res = self.call_running()
+                samples_min[j] = res
 
             samples_max = np.zeros(num_samples)
             try:
-                self.compiler.compile(f'{options} --param={parameter}={r_max}')
+                self.call_compile(self.selected_optimizers, {parameter: r_max},
+                                  None)
             except RuntimeError as err:
                 self.logger.error(f"[red]compile error with {parameter}[/]")
                 self.logger.exception(err)
                 continue
 
             for j in range(num_samples):
-                t = self.call_and_timing()
-                samples_max[j] = t
+                res = self.call_running()
+                samples_max[j] = res
 
             l = stats.levene(samples_min, samples_max).pvalue
             p = stats.ttest_ind(samples_min, samples_max,
@@ -278,17 +229,20 @@ class Optimizer:
 
             i += 1
 
-        with open(self.cache_dir + '/selected_parameters.txt',
+        with open(self.workspace + '/selected_parameters.txt',
                   'w',
                   encoding='utf-8') as f:
             f.writelines(
                 [parameter + '\n' for parameter in self.selected_parameters])
 
     def optimize(self, num_samples=10, num_epochs=60):
+        if os.path.exists(self.workspace + '/optimized_parameters.txt'):
+            self.logger.info("using existing optimized parameters.")
+            return
 
-        if os.path.exists(self.cache_dir + '/selected_optimizers.txt'):
+        if os.path.exists(self.workspace + '/selected_optimizers.txt'):
             self.selected_optimizers = []
-            with open(self.cache_dir + '/selected_optimizers.txt',
+            with open(self.workspace + '/selected_optimizers.txt',
                       'r',
                       encoding='utf-8') as file:
                 self.selected_optimizers = [
@@ -298,26 +252,22 @@ class Optimizer:
             self.logger.info(
                 f"loaded {len(self.selected_optimizers)} optimizers")
 
-        options = f'{self.optimize_base} '
-        for option in self.selected_optimizers:
-            options += f'{option} '
-
         try:
-            self.compiler.compile(options)
+            self.call_compile(self.selected_optimizers, None, None)
         except RuntimeError as err:
             self.logger.error(f"[red]compile error[/]")
             self.logger.exception(err)
             return
 
-        t = 0
+        res = 0
         for _ in track(range(num_samples), "before optimization"):
-            t += self.call_and_timing()
-        t /= num_samples
-        self.logger.info(f"execution time before optimize: {t}")
+            res += self.call_running()
+        res /= num_samples
+        self.logger.info(f"execution result before optimize: {res}")
 
-        if os.path.exists(self.cache_dir + '/selected_parameters.txt'):
+        if os.path.exists(self.workspace + '/selected_parameters.txt'):
             self.selected_parameters = []
-            with open(self.cache_dir + '/selected_parameters.txt',
+            with open(self.workspace + '/selected_parameters.txt',
                       'r',
                       encoding='utf-8') as file:
                 self.selected_parameters = [
@@ -333,27 +283,25 @@ class Optimizer:
 
             nonlocal cnt
 
-            step_options = deepcopy(options)
-            real_vals = []
+            step_parameters = {}
             for i, parameter in enumerate(self.selected_parameters):
                 v = round(vals[0][i] * (self.parameters[parameter][1] -
                                         self.parameters[parameter][0]) +
                           self.parameters[parameter][0])
-                real_vals.append(v)
-                step_options += f'--param={parameter}={int(v)} '
+                step_parameters[parameter] = int(v)
 
-            self.compiler.compile(step_options)
+            self.call_compile(self.selected_optimizers, step_parameters, None)
 
-            t = 0
+            res = 0
             for _ in track(range(num_samples), f'step {cnt}'):
-                t += self.call_and_timing()
-            t /= num_samples
+                res += self.call_running()
+            res /= num_samples
 
-            self.logger.debug(f'{cnt}/{num_epochs} result: {t:.2f}')
+            self.logger.debug(f'{cnt}/{num_epochs} result: {res:.2f}')
 
             cnt += 1
 
-            return t
+            return res
 
         bounds = [{
             'name': parameter,
@@ -366,13 +314,13 @@ class Optimizer:
                                                      acquisition_type='LCB',
                                                      acquisition_weight=0.2)
         method.run_optimization(max_iter=num_epochs)
-        method.plot_convergence(self.cache_dir + '/convergence.png')
+        method.plot_convergence(self.workspace + '/convergence.png')
 
         self.logger.info(f"best result: {method.fx_opt.flatten()[0]}")
         self.logger.info(f"best option: {method.x_opt}")
 
         vals = method.x_opt
-        with open(self.cache_dir + '/optimized_parameters.txt',
+        with open(self.workspace + '/optimized_parameters.txt',
                   'w',
                   encoding='utf-8') as file:
 
@@ -392,34 +340,34 @@ class Optimizer:
         samples_optimizers = np.zeros(num_samples)
         samples_parameters = np.zeros(num_samples)
 
-        self.compiler.compile('-Ofast')
+        self.call_compile(None, None, '-Ofast')
         for i in track(range(num_samples), description='-Ofast'):
-            t = self.call_and_timing()
-            samples_ofast[i] = t
+            res = self.call_running()
+            samples_ofast[i] = res
 
-        # self.compiler.compile('-O0')
+        # self.call_compile(None, None, '-O0')
         # for i in track(range(num_samples), description='   -O0'):
-        #     t = self.call_and_timing()
+        #     res = self.call_running()
         #     samples_o0[i] = t
 
-        self.compiler.compile('-O1')
+        self.call_compile(None, None, '-O1')
         for i in track(range(num_samples), description='   -O1'):
-            t = self.call_and_timing()
-            samples_o1[i] = t
+            res = self.call_running()
+            samples_o1[i] = res
 
-        self.compiler.compile('-O2')
+        self.call_compile(None, None, '-O2')
         for i in track(range(num_samples), description='   -O2'):
-            t = self.call_and_timing()
-            samples_o2[i] = t
+            res = self.call_running()
+            samples_o2[i] = res
 
-        self.compiler.compile('-O3')
+        self.call_compile(None, None, '-O3')
         for i in track(range(num_samples), description='   -O3'):
-            t = self.call_and_timing()
-            samples_o3[i] = t
+            res = self.call_running()
+            samples_o3[i] = res
 
-        if os.path.exists(self.cache_dir + '/selected_optimizers.txt'):
+        if os.path.exists(self.workspace + '/selected_optimizers.txt'):
             self.selected_optimizers = []
-            with open(self.cache_dir + '/selected_optimizers.txt',
+            with open(self.workspace + '/selected_optimizers.txt',
                       'r',
                       encoding='utf-8') as file:
                 self.selected_optimizers = [
@@ -431,33 +379,30 @@ class Optimizer:
         else:
             pass
 
-        options = f'{self.optimize_base} '
-        for option in self.selected_optimizers:
-            options += f'{option} '
-
-        self.compiler.compile(options)
+        self.call_compile(self.selected_optimizers, None, None)
         for i in track(range(num_samples), description='optimizers'):
-            t = self.call_and_timing()
-            samples_optimizers[i] = t
+            res = self.call_running()
+            samples_optimizers[i] = res
 
-        if os.path.exists(self.cache_dir + '/optimized_parameters.txt'):
-            cnt = 0
-            with open(self.cache_dir + '/optimized_parameters.txt',
+        if os.path.exists(self.workspace + '/optimized_parameters.txt'):
+            self.optimized_parameters = {}
+            with open(self.workspace + '/optimized_parameters.txt',
                       'r',
                       encoding='utf-8') as file:
                 for line in file.readlines():
-                    cnt += 1
                     parameter, val = line.strip().split(' ')
-                    options += f'--param={parameter}={val} '
+                    self.optimized_parameters[parameter] = val
 
-            self.logger.info(f"loaded {cnt} parameters")
+            self.logger.info(
+                f"loaded {len(self.optimized_parameters)} parameters")
         else:
             pass
 
-        self.compiler.compile(options)
+        self.call_compile(self.selected_optimizers, self.optimized_parameters,
+                          None)
         for i in track(range(num_samples), description='parameters'):
-            t = self.call_and_timing()
-            samples_parameters[i] = t
+            res = self.call_running()
+            samples_parameters[i] = res
 
         bin_min = min(np.min(samples_o1), np.min(samples_o2),
                       np.min(samples_o3), np.min(samples_ofast),
@@ -490,7 +435,7 @@ class Optimizer:
         plt.xlabel("Time/Tick")
         plt.ylabel("Density")
         plt.legend()
-        plt.savefig(self.cache_dir + "/result.png")
+        plt.savefig(self.workspace + "/result.png")
 
         mean_ofast = samples_ofast.mean()
         # mean_o0 = samples_o0.mean()
@@ -515,7 +460,7 @@ class Optimizer:
 
         table = Table(title="Result")
         table.add_column("Method")
-        table.add_column(f"Result ({self.timing_method})", style="cyan")
+        table.add_column(f"Result", style="cyan")
         table.add_column("Score", style="green")
         table.add_column("Delta", style="green")
         table.add_row("Ofast", f"{mean_ofast:.2f}", f"{score_ofast:.2f}", "")
@@ -529,19 +474,3 @@ class Optimizer:
 
         console = Console()
         console.print(table)
-
-
-if __name__ == '__main__':
-    src = 'tests/src/united.cpp'
-    out = 'tests/build/united.exe'
-    optimizer = yatuner.optimizer.Optimizer(src=src,
-                                            out=out,
-                                            cc='g++',
-                                            use_vm=False,
-                                            optimize_base='-O3')
-    optimizer.initialize()
-    # optimizer.test_run(num_samples=100, warmup=20)
-    # optimizer.hypotest_optimizers(num_samples=5)
-    # optimizer.hypotest_parameters(num_samples=5)
-    # optimizer.optimize(num_samples=5)
-    optimizer.run(num_samples=50)
