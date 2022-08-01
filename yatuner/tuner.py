@@ -29,14 +29,14 @@ class Tuner:
                  log_level=logging.DEBUG,
                  symmetrization=True) -> None:
 
-        logging.basicConfig(level=log_level,
-                            format='[ %(name)s ] %(message)s',
+        logging.basicConfig(format='[ %(name)s ] %(message)s',
                             handlers=[
                                 RichHandler(level=log_level,
                                             markup=True,
                                             show_path=False)
                             ])
         self.logger = logging.getLogger('yatuner')
+        self.logger.setLevel(log_level)
 
         self.call_compile = call_compile
         self.call_running = call_running
@@ -447,7 +447,6 @@ class Tuner:
         plt.legend()
         plt.savefig(self.workspace + "/result.png")
 
-        plt.clf()
         pd_data = pd.DataFrame({
             'O1': samples_o1,
             'O2': samples_o2,
@@ -456,12 +455,7 @@ class Tuner:
             'Optimizers': samples_optimizers,
             'parameters': samples_parameters
         })
-        pd_data.to_csv(self.workspace + "/result.csv")
-        sns.violinplot(data=pd_data, orient='horizontal')
-        plt.title('Time Comparison')
-        plt.ylabel('Optimization_methods')
-        plt.xlabel('Time/Tick - Lower the better')
-        plt.savefig(self.workspace + "/result_violin.png")
+        pd_data.to_csv(self.workspace + "/result.csv", index=0)
 
         mean_ofast = samples_ofast.mean()
         # mean_o0 = samples_o0.mean()
@@ -500,3 +494,17 @@ class Tuner:
 
         console = Console()
         console.print(table)
+    
+    def plot_data(self) -> None:
+        if not os.path.exists(self.workspace + '/result.csv'):
+            self.logger.error("No data found.")
+            return
+        plt.style.use('seaborn')
+        pd_data = pd.read_csv(self.workspace + "/result.csv")
+        plt.clf()
+        sns.violinplot(data=pd_data, orient='horizontal', palette='Set2', width=0.9)
+        plt.title('Time Comparison')
+        plt.ylabel('Optimization_methods')
+        plt.xlabel('Time/Tick - Lower the better')
+        plt.grid()
+        plt.savefig(self.workspace + "/result_violin.png")
