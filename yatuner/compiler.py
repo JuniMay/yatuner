@@ -129,7 +129,14 @@ class Gcc(Compiler):
 
         return self.params
 
-    def compile(self, options='') -> None:
+    def compile(self, options='', src=None, out=None) -> None:
+
+        if src is not None:
+            self.src = src
+
+        if out is not None:
+            self.out = out
+
         command = self.template.format(cc=self.cc,
                                        options=options,
                                        out=self.out,
