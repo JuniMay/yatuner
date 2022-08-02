@@ -1,8 +1,12 @@
+from math import log10
+from copy import deepcopy
+from email.mime import base
 import os
-from typing import Callable, Mapping, Sequence, Tuple
+from typing import Callable, Dict, Mapping, Sequence, Tuple, Any
 
 import numpy as np
 import yatuner
+from yatuner import LinUCB
 import logging
 
 import GPyOpt
@@ -25,6 +29,7 @@ class Tuner:
                  call_running: Callable[[], float],
                  optimizers: Sequence[str],
                  parameters: Mapping[str, Tuple],
+                 call_perf: Callable[[], Dict[str, Any]]=None,
                  workspace='yatuner.db',
                  log_level=logging.DEBUG,
                  symmetrization=True) -> None:
@@ -40,6 +45,7 @@ class Tuner:
 
         self.call_compile = call_compile
         self.call_running = call_running
+        self.call_perf = call_perf
         self.optimizers = optimizers
         self.parameters = parameters
         self.workspace = workspace
@@ -244,6 +250,135 @@ class Tuner:
                   encoding='utf-8') as f:
             f.writelines(
                 [parameter + '\n' for parameter in self.selected_parameters])
+    
+
+    def optimize_linUCB(self, alpha=0.5, num_epochs=200, num_samples=10, num_bins=25, method='parallel', nth_choice=3) -> None:
+        if self.call_perf == None:
+            self.logger.error("call_perf not found")
+            return
+
+        if num_bins > num_epochs:
+            self.logger.error("num_epochs needs to be larger than num_bins")
+            return
+
+        if os.path.exists(self.workspace + '/optimized_parameters.txt'):
+            self.logger.info("using existing optimized parameters.")
+            return
+
+        if os.path.exists(self.workspace + '/selected_optimizers.txt'):
+            self.selected_optimizers = []
+            with open(self.workspace + '/selected_optimizers.txt',
+                      'r',
+                      encoding='utf-8') as file:
+                self.selected_optimizers = [
+                    x.strip() for x in file.readlines()
+                ]
+
+            self.logger.info(
+                f"loaded {len(self.selected_optimizers)} optimizers")
+
+        try:
+            self.call_compile(self.selected_optimizers, None, None)
+        except RuntimeError as err:
+            self.logger.error(f"[red]compile error[/]")
+            self.logger.exception(err)
+            return
+
+        baseline = 0
+        for _ in track(range(num_samples), "before optimization"):
+            baseline += self.call_running()
+        baseline /= num_samples
+        self.logger.info(f"execution result before optimize: {baseline}")
+
+        if os.path.exists(self.workspace + '/selected_parameters.txt'):
+            self.selected_parameters = []
+            with open(self.workspace + '/selected_parameters.txt',
+                      'r',
+                      encoding='utf-8') as file:
+                self.selected_parameters = [
+                    x.strip() for x in file.readlines()
+                ]
+
+            self.logger.info(
+                f"loaded {len(self.selected_parameters)} parameters")
+
+        dim = len(self.call_perf())
+        features = [log10(1 + x) for x in self.call_perf().values()]
+        if method == 'serial':
+            ucbs = [LinUCB.LinUCB(dim, 
+                              np.linspace(self.parameters[param][0], self.parameters[param][1], 
+                                          num_bins, 
+                                          endpoint=True, 
+                                          dtype='int'),
+                              alpha=alpha) 
+                    for param in self.selected_parameters]
+            for ucb in ucbs:
+                    ucb.init()
+            choices = np.zeros(len(self.selected_parameters), dtype=int)
+            for c in range(len(self.selected_parameters)):
+                timearr = np.zeros(num_epochs)
+                for i in track(range(num_epochs), description=f'optimizing parameter {c}'):
+                    choices[c] = ucbs[c].recommend(features)
+                    step_parameters = {}
+                    for idx, param in enumerate(self.selected_parameters[:c+1]):
+                        step_parameters[param] = choices[idx]
+                    # print(step_parameters)
+                    self.call_compile(self.selected_optimizers, step_parameters, None)
+                    new_perf = self.call_perf()
+                    features = [log10(1 + x) for x in new_perf.values()]
+                    new_time = self.call_running() # TODO: this needs to be solved
+                    reward = (baseline - new_time) / 1000
+                    self.logger.info(f"r={reward} t={new_time} baseline={baseline}")
+                    ucbs[c].update(reward)
+                    timearr[i] = new_time
+                plt.clf()
+                plt.plot(timearr)
+                plt.savefig(self.workspace + '/convergence_linUCB.png')
+                print(choices)
+
+        elif method == 'parallel':
+            ucbs = [LinUCB.LinUCB(dim, 
+                              np.linspace(self.parameters[param][0], 
+                                          self.parameters[param][1], 
+                                          num_bins, 
+                                          endpoint=True, 
+                                          dtype='int'),
+                              alpha=alpha,
+                              nth_choice=nth_choice) 
+                    for param in self.selected_parameters]
+            for ucb in ucbs:
+                    ucb.init()
+            choices = np.zeros(len(self.selected_parameters), dtype=int)
+            timearr = np.zeros(num_epochs)
+            for i in track(range(num_epochs), description='optimizing'):
+                for idx, ucb in enumerate(ucbs):
+                    choices[idx] = ucb.recommend(features)
+                step_parameters = {}
+                for idx, param in enumerate(self.selected_parameters):
+                    step_parameters[param] = choices[idx]
+                # print(step_parameters)
+                self.call_compile(self.selected_optimizers, step_parameters, None)            
+                new_perf = self.call_perf()
+                features = [log10(1 + x) for x in new_perf.values()]
+                new_time = self.call_running() # TODO: this needs to be solved
+                reward = (baseline - new_time) / 1000
+                self.logger.info(f"r={reward} t={new_time} baseline={baseline}")
+                for ucb in ucbs:
+                    ucb.update(reward)
+                timearr[i] = new_time
+                plt.clf()
+                plt.plot(timearr)
+                plt.savefig(self.workspace + '/convergence_linUCB.png')
+                print(choices)
+        else:
+            self.logger.error("method needs to be either serial or parallel")
+            return
+
+
+        with open(self.workspace + '/optimized_parameters.txt', 'w', encoding='utf-8') as file:
+            for idx, param in enumerate(self.selected_parameters):
+                file.write(param + " " + str(choices[idx]) + '\n') 
+
 
     def optimize(self, num_samples=10, num_epochs=60):
         if os.path.exists(self.workspace + '/optimized_parameters.txt'):

@@ -4,7 +4,7 @@ import yatuner
 
 src = './src/triple.cpp'
 out = './build/triple.exe'
-metric = 'cpu-cycles'
+metric = 'duration_time'
 
 gcc = yatuner.Gcc(src=src,
                   out=out,
@@ -39,13 +39,18 @@ def run():
     return yatuner.utils.fetch_perf_stat(
         gcc.fetch_execute_cmd())[metric] / 1000
 
+def perf():
+    return yatuner.utils.fetch_perf_stat(
+        gcc.fetch_execute_cmd())
 
 tuner = yatuner.Tuner(comp, run, gcc.fetch_optimizers(),
-                      gcc.fetch_parameters())
+                      gcc.fetch_parameters(), call_perf=perf)
 
 tuner.initialize()
-tuner.test_run(num_samples=100, warmup=20)
-tuner.hypotest_optimizers(num_samples=5)
-tuner.hypotest_parameters(num_samples=5)
-tuner.optimize(num_samples=10)
+# tuner.test_run(num_samples=100, warmup=20)
+# tuner.hypotest_optimizers(num_samples=5)
+# tuner.hypotest_parameters(num_samples=5)
+# tuner.optimize(num_samples=10)
+tuner.optimize_linUCB(alpha=0.25, num_bins=10, num_epochs=25, method='serial')
 tuner.run(num_samples=50)
+tuner.plot_data()
