@@ -366,10 +366,10 @@ class Tuner:
                 for ucb in ucbs:
                     ucb.update(reward)
                 timearr[i] = new_time
-                plt.clf()
-                plt.plot(timearr)
-                plt.savefig(self.workspace + '/convergence_linUCB.png')
-                print(choices)
+            plt.clf()
+            plt.plot(timearr)
+            plt.savefig(self.workspace + '/convergence_linUCB.png')
+            print(choices)
         else:
             self.logger.error("method needs to be either serial or parallel")
             return
