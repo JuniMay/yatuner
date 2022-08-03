@@ -2,13 +2,15 @@ from math import log10
 import os
 from typing import Callable, Dict, Mapping, Sequence, Tuple, Any
 
+import seaborn as sns
+import pandas as pd
 import numpy as np
-import yatuner
-from yatuner import LinUCB
-import logging
 
+import yatuner
+import logging
 import GPyOpt
 
+from yatuner import LinUCB
 from rich.logging import RichHandler
 from rich.table import Table
 from rich.console import Console
@@ -16,8 +18,6 @@ from rich.progress import track
 from scipy import stats
 from scipy import optimize
 from matplotlib import pyplot as plt
-import seaborn as sns
-import pandas as pd
 
 
 class Tuner:
@@ -98,6 +98,7 @@ class Tuner:
             self.logger.warning(
                 "[red]execution time disobey normal distribution[/]")
 
+        plt.clf()
         plt.hist(self.exec_data, bins=50, density=True, label='test run')
         plt.legend()
         plt.savefig(self.workspace + "/test_run_distribution.png")

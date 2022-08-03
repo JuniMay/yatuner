@@ -5,7 +5,7 @@ import os
 
 build_dir = './build'
 workspace_dir = './workspace'
-metric = 'cpu-cycles'
+metric = 'duration_time'
 
 if not os.path.isdir(build_dir):
     os.mkdir(build_dir)
@@ -57,19 +57,30 @@ for case_dir, case_name in benchmark_list:
         return yatuner.utils.fetch_perf_stat(
             f'{build_dir}/{case_name}.exe')[metric] / 1000
 
+    def perf():
+        return yatuner.utils.fetch_perf_stat(f'{build_dir}/{case_name}.exe')
+
     tuner = yatuner.Tuner(comp,
                           run,
                           gcc.fetch_optimizers(),
                           gcc.fetch_parameters(),
-                          f'{workspace_dir}/{case_name}.db',
-                          log_level=logging.INFO)
-    
+                          perf,
+                          workspace=f'{workspace_dir}/{case_name}.db',
+                          log_level=logging.INFO,
+                          norm_range=None)
+
     logging.getLogger('PolyBench').info(
         f'Performing Optimization on {case_dir}')
 
     tuner.initialize()
-    tuner.test_run(num_samples=100, warmup=20)
+    tuner.test_run(num_samples=200, warmup=10)
     tuner.hypotest_optimizers(num_samples=5)
     tuner.hypotest_parameters(num_samples=5)
-    tuner.optimize(num_samples=10, num_epochs=60)
+    # tuner.optimize(num_samples=10, num_epochs=60)
+    tuner.optimize_linUCB(alpha=0.25,
+                          num_bins=30,
+                          num_epochs=200,
+                          nth_choice=4)
+
     tuner.run(num_samples=50)
+    tuner.plot_data()

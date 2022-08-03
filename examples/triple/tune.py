@@ -49,10 +49,10 @@ tuner = yatuner.Tuner(comp,
                       gcc.fetch_optimizers(),
                       gcc.fetch_parameters(),
                       call_perf=perf,
-                      norm_range=1.0)
+                      norm_range=None)
 
 tuner.initialize()
-tuner.test_run(num_samples=1000, warmup=0)
+tuner.test_run(num_samples=500, warmup=0)
 tuner.hypotest_optimizers(num_samples=5)
 tuner.hypotest_parameters(num_samples=5)
 # tuner.optimize(num_samples=10)
