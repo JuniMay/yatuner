@@ -260,7 +260,8 @@ class Tuner:
                         num_samples=10,
                         num_bins=25,
                         method='parallel',
-                        nth_choice=3) -> None:
+                        nth_choice=3,
+                        metric='cpu-cycles') -> None:
         if self.call_perf == None:
             self.logger.error("call_perf not found")
             return
@@ -312,95 +313,48 @@ class Tuner:
 
         dim = len(self.call_perf())
         features = [log10(1 + x) for x in self.call_perf().values()]
-        if method == 'serial':
-            ucbs = [
-                LinUCB.LinUCB(dim,
-                              np.linspace(self.parameters[param][0],
-                                          self.parameters[param][1],
-                                          num_bins,
-                                          endpoint=True,
-                                          dtype='int'),
-                              alpha=alpha)
-                for param in self.selected_parameters
-            ]
+        ucbs = [
+            LinUCB.LinUCB(dim,
+                            np.linspace(self.parameters[param][0],
+                                        self.parameters[param][1],
+                                        num_bins,
+                                        endpoint=True,
+                                        dtype='int'),
+                            alpha=alpha,
+                            nth_choice=nth_choice)
+            for param in self.selected_parameters
+        ]
+        for ucb in ucbs:
+            ucb.init()
+        choices = np.zeros(len(self.selected_parameters), dtype=int)
+        timearr = np.zeros(num_epochs)
+        best_choices = np.zeros(len(self.selected_parameters), dtype=int)
+        best_time = float('inf')
+        for i in track(range(num_epochs), description='optimizing'):
+            for idx, ucb in enumerate(ucbs):
+                choices[idx] = ucb.recommend(features)
+            step_parameters = {}
+            for idx, param in enumerate(self.selected_parameters):
+                step_parameters[param] = choices[idx]
+            # print(step_parameters)
+            self.call_compile(self.selected_optimizers, step_parameters,
+                                None)
+            new_perf = self.call_perf()
+            features = [log10(1 + x) for x in new_perf.values()]
+            new_time = new_perf[metric] / 1000  # TODO: this needs to be solved
+            reward = (baseline - new_time) / 1000
+            self.logger.info(
+                f"r={reward:.2f} t={new_time:.2f} baseline={baseline:.2f}")
             for ucb in ucbs:
-                ucb.init()
-            choices = np.zeros(len(self.selected_parameters), dtype=int)
-            for c in range(len(self.selected_parameters)):
-                timearr = np.zeros(num_epochs)
-                for i in track(range(num_epochs),
-                               description=f'optimizing parameter {c}'):
-                    choices[c] = ucbs[c].recommend(features)
-                    step_parameters = {}
-                    for idx, param in enumerate(self.selected_parameters[:c +
-                                                                         1]):
-                        step_parameters[param] = choices[idx]
-                    # print(step_parameters)
-                    self.call_compile(self.selected_optimizers,
-                                      step_parameters, None)
-                    new_perf = self.call_perf()
-                    features = [log10(1 + x) for x in new_perf.values()]
-                    new_time = self.call_running(
-                    )  # TODO: this needs to be solved
-                    reward = (baseline - new_time) / 1000
-                    self.logger.info(
-                        f"r={reward:.2f} t={new_time:.2f} baseline={baseline:.2f}"
-                    )
-                    ucbs[c].update(reward)
-                    timearr[i] = new_time
-                plt.clf()
-                plt.plot(timearr)
-                plt.savefig(self.workspace + '/convergence_linUCB.png')
-                print(choices)
-            best_choices = choices.copy()
-
-        elif method == 'parallel':
-            ucbs = [
-                LinUCB.LinUCB(dim,
-                              np.linspace(self.parameters[param][0],
-                                          self.parameters[param][1],
-                                          num_bins,
-                                          endpoint=True,
-                                          dtype='int'),
-                              alpha=alpha,
-                              nth_choice=nth_choice)
-                for param in self.selected_parameters
-            ]
-            for ucb in ucbs:
-                ucb.init()
-            choices = np.zeros(len(self.selected_parameters), dtype=int)
-            timearr = np.zeros(num_epochs)
-            best_choices = np.zeros(len(self.selected_parameters), dtype=int)
-            best_time = float('inf')
-            for i in track(range(num_epochs), description='optimizing'):
-                for idx, ucb in enumerate(ucbs):
-                    choices[idx] = ucb.recommend(features)
-                step_parameters = {}
-                for idx, param in enumerate(self.selected_parameters):
-                    step_parameters[param] = choices[idx]
-                # print(step_parameters)
-                self.call_compile(self.selected_optimizers, step_parameters,
-                                  None)
-                new_perf = self.call_perf()
-                features = [log10(1 + x) for x in new_perf.values()]
-                new_time = self.call_running()  # TODO: this needs to be solved
-                reward = (baseline - new_time) / 1000
-                self.logger.info(
-                    f"r={reward:.2f} t={new_time:.2f} baseline={baseline:.2f}")
-                for ucb in ucbs:
-                    ucb.update(reward)
-                timearr[i] = new_time
-                if new_time < best_time:
-                    best_time = new_time
-                    best_choices = choices.copy()
-            plt.clf()
-            plt.plot(timearr)
-            plt.savefig(self.workspace + '/convergence_linUCB.png')
-            print(choices)
-        else:
-            self.logger.error("method needs to be either serial or parallel")
-            return
-
+                ucb.update(reward)
+            timearr[i] = new_time
+            if new_time < best_time:
+                best_time = new_time
+                best_choices = choices.copy()
+        plt.clf()
+        plt.plot(timearr)
+        plt.savefig(self.workspace + '/convergence_linUCB.png')
+        print(choices)
         with open(self.workspace + '/optimized_parameters.txt',
                   'w',
                   encoding='utf-8') as file:
