@@ -1,6 +1,4 @@
 from math import log10
-from copy import deepcopy
-from email.mime import base
 import os
 from typing import Callable, Dict, Mapping, Sequence, Tuple, Any
 
@@ -29,10 +27,10 @@ class Tuner:
                  call_running: Callable[[], float],
                  optimizers: Sequence[str],
                  parameters: Mapping[str, Tuple],
-                 call_perf: Callable[[], Dict[str, Any]]=None,
+                 call_perf: Callable[[], Dict[str, Any]] = None,
                  workspace='yatuner.db',
                  log_level=logging.DEBUG,
-                 symmetrization=True) -> None:
+                 norm_range=None) -> None:
 
         logging.basicConfig(format='[ %(name)s ] %(message)s',
                             handlers=[
@@ -49,7 +47,12 @@ class Tuner:
         self.optimizers = optimizers
         self.parameters = parameters
         self.workspace = workspace
-        self.symmetrization = symmetrization
+        if norm_range is None:
+            self.symmetrization = True
+            self.norm_range = None
+        else:
+            self.symmetrization = False
+            self.norm_range = norm_range
 
     def initialize(self):
         if not os.path.isdir(self.workspace):
@@ -80,7 +83,7 @@ class Tuner:
                 self.exec_data.append(maxima + maxima - self.exec_data[i])
         else:
             self.exec_data = np.sort(
-                self.exec_data)[:int(len(self.exec_data) * 0.8)]
+                self.exec_data)[:int(len(self.exec_data) * self.norm_range)]
 
         self.u = np.mean(self.exec_data)
         self.std = np.std(self.exec_data)
@@ -250,9 +253,14 @@ class Tuner:
                   encoding='utf-8') as f:
             f.writelines(
                 [parameter + '\n' for parameter in self.selected_parameters])
-    
 
-    def optimize_linUCB(self, alpha=0.5, num_epochs=200, num_samples=10, num_bins=25, method='parallel', nth_choice=3) -> None:
+    def optimize_linUCB(self,
+                        alpha=0.5,
+                        num_epochs=200,
+                        num_samples=10,
+                        num_bins=25,
+                        method='parallel',
+                        nth_choice=3) -> None:
         if self.call_perf == None:
             self.logger.error("call_perf not found")
             return
@@ -305,30 +313,39 @@ class Tuner:
         dim = len(self.call_perf())
         features = [log10(1 + x) for x in self.call_perf().values()]
         if method == 'serial':
-            ucbs = [LinUCB.LinUCB(dim, 
-                              np.linspace(self.parameters[param][0], self.parameters[param][1], 
-                                          num_bins, 
-                                          endpoint=True, 
+            ucbs = [
+                LinUCB.LinUCB(dim,
+                              np.linspace(self.parameters[param][0],
+                                          self.parameters[param][1],
+                                          num_bins,
+                                          endpoint=True,
                                           dtype='int'),
-                              alpha=alpha) 
-                    for param in self.selected_parameters]
+                              alpha=alpha)
+                for param in self.selected_parameters
+            ]
             for ucb in ucbs:
-                    ucb.init()
+                ucb.init()
             choices = np.zeros(len(self.selected_parameters), dtype=int)
             for c in range(len(self.selected_parameters)):
                 timearr = np.zeros(num_epochs)
-                for i in track(range(num_epochs), description=f'optimizing parameter {c}'):
+                for i in track(range(num_epochs),
+                               description=f'optimizing parameter {c}'):
                     choices[c] = ucbs[c].recommend(features)
                     step_parameters = {}
-                    for idx, param in enumerate(self.selected_parameters[:c+1]):
+                    for idx, param in enumerate(self.selected_parameters[:c +
+                                                                         1]):
                         step_parameters[param] = choices[idx]
                     # print(step_parameters)
-                    self.call_compile(self.selected_optimizers, step_parameters, None)
+                    self.call_compile(self.selected_optimizers,
+                                      step_parameters, None)
                     new_perf = self.call_perf()
                     features = [log10(1 + x) for x in new_perf.values()]
-                    new_time = self.call_running() # TODO: this needs to be solved
+                    new_time = self.call_running(
+                    )  # TODO: this needs to be solved
                     reward = (baseline - new_time) / 1000
-                    self.logger.info(f"r={reward} t={new_time} baseline={baseline}")
+                    self.logger.info(
+                        f"r={reward:.2f} t={new_time:.2f} baseline={baseline:.2f}"
+                    )
                     ucbs[c].update(reward)
                     timearr[i] = new_time
                 plt.clf()
@@ -338,17 +355,19 @@ class Tuner:
             best_choices = choices.copy()
 
         elif method == 'parallel':
-            ucbs = [LinUCB.LinUCB(dim, 
-                              np.linspace(self.parameters[param][0], 
-                                          self.parameters[param][1], 
-                                          num_bins, 
-                                          endpoint=True, 
+            ucbs = [
+                LinUCB.LinUCB(dim,
+                              np.linspace(self.parameters[param][0],
+                                          self.parameters[param][1],
+                                          num_bins,
+                                          endpoint=True,
                                           dtype='int'),
                               alpha=alpha,
-                              nth_choice=nth_choice) 
-                    for param in self.selected_parameters]
+                              nth_choice=nth_choice)
+                for param in self.selected_parameters
+            ]
             for ucb in ucbs:
-                    ucb.init()
+                ucb.init()
             choices = np.zeros(len(self.selected_parameters), dtype=int)
             timearr = np.zeros(num_epochs)
             best_choices = np.zeros(len(self.selected_parameters), dtype=int)
@@ -360,12 +379,14 @@ class Tuner:
                 for idx, param in enumerate(self.selected_parameters):
                     step_parameters[param] = choices[idx]
                 # print(step_parameters)
-                self.call_compile(self.selected_optimizers, step_parameters, None)            
+                self.call_compile(self.selected_optimizers, step_parameters,
+                                  None)
                 new_perf = self.call_perf()
                 features = [log10(1 + x) for x in new_perf.values()]
-                new_time = self.call_running() # TODO: this needs to be solved
+                new_time = self.call_running()  # TODO: this needs to be solved
                 reward = (baseline - new_time) / 1000
-                self.logger.info(f"r={reward} t={new_time} baseline={baseline}")
+                self.logger.info(
+                    f"r={reward:.2f} t={new_time:.2f} baseline={baseline:.2f}")
                 for ucb in ucbs:
                     ucb.update(reward)
                 timearr[i] = new_time
@@ -380,11 +401,11 @@ class Tuner:
             self.logger.error("method needs to be either serial or parallel")
             return
 
-
-        with open(self.workspace + '/optimized_parameters.txt', 'w', encoding='utf-8') as file:
+        with open(self.workspace + '/optimized_parameters.txt',
+                  'w',
+                  encoding='utf-8') as file:
             for idx, param in enumerate(self.selected_parameters):
-                file.write(param + " " + str(best_choices[idx]) + '\n') 
-
+                file.write(param + " " + str(best_choices[idx]) + '\n')
 
     def optimize(self, num_samples=10, num_epochs=60):
         if os.path.exists(self.workspace + '/optimized_parameters.txt'):
@@ -635,7 +656,7 @@ class Tuner:
 
         console = Console()
         console.print(table)
-    
+
     def plot_data(self) -> None:
         if not os.path.exists(self.workspace + '/result.csv'):
             self.logger.error("No data found.")
@@ -644,7 +665,12 @@ class Tuner:
         pd_data = pd.read_csv(self.workspace + "/result.csv")
         plt.clf()
         plt.figure(figsize=(10, 5), dpi=100)
-        sns.violinplot(data=pd_data, orient='horizontal', palette='Set3', width=0.9, )
+        sns.violinplot(
+            data=pd_data,
+            orient='horizontal',
+            palette='Set3',
+            width=0.9,
+        )
         plt.title('Time Comparison')
         plt.ylabel('Optimization_methods')
         plt.xlabel('Time/Tick - Lower the better')

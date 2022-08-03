@@ -39,17 +39,22 @@ def run():
     return yatuner.utils.fetch_perf_stat(
         gcc.fetch_execute_cmd())[metric] / 1000
 
-def perf():
-    return yatuner.utils.fetch_perf_stat(
-        gcc.fetch_execute_cmd())
 
-tuner = yatuner.Tuner(comp, run, gcc.fetch_optimizers(),
-                      gcc.fetch_parameters(), call_perf=perf)
+def perf():
+    return yatuner.utils.fetch_perf_stat(gcc.fetch_execute_cmd())
+
+
+tuner = yatuner.Tuner(comp,
+                      run,
+                      gcc.fetch_optimizers(),
+                      gcc.fetch_parameters(),
+                      call_perf=perf,
+                      norm_range=1.0)
 
 tuner.initialize()
-# tuner.test_run(num_samples=100, warmup=20)
-# tuner.hypotest_optimizers(num_samples=5)
-# tuner.hypotest_parameters(num_samples=5)
+tuner.test_run(num_samples=1000, warmup=0)
+tuner.hypotest_optimizers(num_samples=5)
+tuner.hypotest_parameters(num_samples=5)
 # tuner.optimize(num_samples=10)
 tuner.optimize_linUCB(alpha=0.25, num_bins=30, num_epochs=200, nth_choice=4)
 # tuner.optimize_linUCB(alpha=0.5, num_bins=15, num_epochs=50, method='serial')
