@@ -335,6 +335,7 @@ class Tuner:
                 plt.plot(timearr)
                 plt.savefig(self.workspace + '/convergence_linUCB.png')
                 print(choices)
+            best_choices = choices.copy()
 
         elif method == 'parallel':
             ucbs = [LinUCB.LinUCB(dim, 
@@ -350,6 +351,8 @@ class Tuner:
                     ucb.init()
             choices = np.zeros(len(self.selected_parameters), dtype=int)
             timearr = np.zeros(num_epochs)
+            best_choices = np.zeros(len(self.selected_parameters), dtype=int)
+            best_time = float('inf')
             for i in track(range(num_epochs), description='optimizing'):
                 for idx, ucb in enumerate(ucbs):
                     choices[idx] = ucb.recommend(features)
@@ -366,6 +369,9 @@ class Tuner:
                 for ucb in ucbs:
                     ucb.update(reward)
                 timearr[i] = new_time
+                if new_time < best_time:
+                    best_time = new_time
+                    best_choices = choices.copy()
             plt.clf()
             plt.plot(timearr)
             plt.savefig(self.workspace + '/convergence_linUCB.png')
@@ -377,7 +383,7 @@ class Tuner:
 
         with open(self.workspace + '/optimized_parameters.txt', 'w', encoding='utf-8') as file:
             for idx, param in enumerate(self.selected_parameters):
-                file.write(param + " " + str(choices[idx]) + '\n') 
+                file.write(param + " " + str(best_choices[idx]) + '\n') 
 
 
     def optimize(self, num_samples=10, num_epochs=60):
@@ -637,7 +643,8 @@ class Tuner:
         plt.style.use('seaborn')
         pd_data = pd.read_csv(self.workspace + "/result.csv")
         plt.clf()
-        sns.violinplot(data=pd_data, orient='horizontal', palette='Set2', width=0.9)
+        plt.figure(figsize=(10, 5), dpi=100)
+        sns.violinplot(data=pd_data, orient='horizontal', palette='Set3', width=0.9, )
         plt.title('Time Comparison')
         plt.ylabel('Optimization_methods')
         plt.xlabel('Time/Tick - Lower the better')
