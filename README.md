@@ -33,44 +33,12 @@
 - 运行时间优化方面存在计时不准的问题（考虑使用 profiling 程序进行）
 - 运行时间优化耗时太长，且效果不佳/不稳定（考虑在 `-O2` 的基础上进行进一步调优）
 
-## 使用示例
+## 调优示例
 
-### 体积优化示例 —— 以 polybench 中的程序为例
+见 `examples/` 文件夹
 
-```python
-from yatuner import compilers
-from yatuner import optimizers
+## FAQ
 
-compilers.Gcc(
-    stage='c',
-    infiles=['tests/benchmarks/polybench/utilities/polybench.c'],
-    outfile='tests/build/polybench.o',
-    inc_dirs=['tests/benchmarks/polybench/utilities']).execute()
+1. 为什么使用脚本文件进行优化项目的配置
 
-gcc = compilers.Gcc(
-    infiles=[
-        'tests/build/polybench.o',
-        'tests/benchmarks/polybench/linear-algebra/kernels/3mm/3mm.c'
-    ],
-    outfile='tests/build/3mm',
-    inc_dirs=[
-        'tests/benchmarks/polybench/utilities',
-        'tests/benchmarks/polybench/linear-algebra/kernels/3mm'
-    ])
-
-optimizer = optimizers.BayesianOptimizer(gcc)
-# 执行优化，将会输出优化后的文件大小和编译命令
-optimizer.optimize(15)
-
-```
-
-### 速度优化示例
-
-```python
-
-gcc = yatuner.compilers.Gcc(infiles=['tests/samples/euler.c'],
-                            outfile='tests/build/euler')
-# 指定优化目标为运行时间
-optimizer = yatuner.optimizers.BayesianOptimizer(gcc, goal='time') 
-optimizer.optimize(10)
-```
+yatuner 的目的并不是完成项目的构建，而是对已有构建配置的项目进行调优，直接使用 python 进行项目调优的配置可以使得调优和编译过程的自由度更高。
