@@ -79,6 +79,3 @@ tuner.plot_data()
     file.write(content)
 
     file.close()
-
-if __name__ == '__main__':
-    generate('./tune.py')
