@@ -15,7 +15,7 @@ $(VENV):
 	$(BIN)/pip install -e .
 	touch $(VENV)
 
-.PHONY: test clean init
+.PHONY: test clean init dist
 
 init: $(VENV)
 	mkdir -p tests/build
@@ -23,8 +23,12 @@ init: $(VENV)
 test: $(VENV) init
 	$(BIN)/python3 -m unittest discover
 
+dist:
+	$(BIN)/python3 setup.py sdist bdist_wheel
+
 clean: 
 #	rm -rf $(VENV)
 	rm -rf tests/build
+	rm -rf dist
 	find . -type f -name *.pyc -delete
 	find . -type d -name __pycache__ -delete
