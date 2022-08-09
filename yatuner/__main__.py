@@ -12,15 +12,27 @@
 
 import yatuner
 import argparse
+import sys
 
-parser = argparse.ArgumentParser(prog='yatuner', description=yatuner.__doc__)
-parser.add_argument('-g',
-                    '--generate',
-                    type=str,
-                    dest='filename',
-                    help="Automatic generate basic tuning script")
 
-args = parser.parse_args()
+def main():
+    parser = argparse.ArgumentParser(prog='yatuner',
+                                     description=yatuner.__doc__)
+    parser.add_argument('-g',
+                        '--generate',
+                        type=str,
+                        dest='filename',
+                        help="Automatic generate basic tuning script")
 
-if args.filename is not None:
-    yatuner.generate(args.filename)
+    if len(sys.argv) < 2:
+        parser.print_help()
+        return
+
+    args = parser.parse_args()
+
+    if args.filename is not None:
+        yatuner.generate(args.filename)
+
+
+if __name__ == '__main__':
+    main()

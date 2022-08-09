@@ -1,3 +1,4 @@
+from importlib.metadata import entry_points
 from setuptools import setup
 
 setup(name='yatuner',
@@ -10,4 +11,5 @@ setup(name='yatuner',
       requires=[
           'GPyOpt', 'GPy', 'numpy', 'matplotlib', 'scipy', 'rich', 'seaborn'
       ],
-      license='Mulan PSL v2')
+      license='Mulan PSL v2',
+      entry_points={'console_scripts': ['yatuner=yatuner.__main__:main']})
