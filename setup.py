@@ -4,7 +4,7 @@ from setuptools import setup
 setup(name='yatuner',
       version='0.0.1',
       author='Synodic Month, Juni May',
-      author_email=' , juni_may@outlook.com',
+      author_email='synodic_month@163.com , juni_may@outlook.com',
       description='Yet another auto tuner for compilers.',
       long_description='README.md',
       packages=['yatuner'],
