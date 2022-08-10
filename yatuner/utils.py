@@ -31,7 +31,7 @@ def execute(command) -> Dict[str, Any]:
                          shell=True,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
-    stdout, stderr = p.communicate()
+    stdout, stderr = p.communicate(timeout=30)
     returncode = p.returncode
 
     p.terminate()

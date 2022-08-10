@@ -64,7 +64,7 @@ tuner = yatuner.Tuner(comp,
                       norm_range=None)
 
 tuner.initialize()
-tuner.test_run(num_samples=500, warmup=0)
+tuner.test_run(num_samples=50, warmup=0)
 tuner.hypotest_optimizers(num_samples=5)
 tuner.hypotest_parameters(num_samples=5)
 # tuner.optimize(num_samples=10)

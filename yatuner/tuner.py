@@ -12,6 +12,7 @@
 
 from math import log10
 import os
+from subprocess import TimeoutExpired
 from typing import Callable, Dict, Mapping, Sequence, Tuple, Any
 
 import seaborn as sns
@@ -350,20 +351,23 @@ class Tuner:
             for idx, param in enumerate(self.selected_parameters):
                 step_parameters[param] = choices[idx]
             # print(step_parameters)
-            self.call_compile(self.selected_optimizers, step_parameters,
-                                None)
-            new_perf = self.call_perf()
-            features = [log10(1 + x) for x in new_perf.values()]
-            new_time = new_perf[metric] / 1000  # TODO: this needs to be solved
-            reward = (baseline - new_time) / 1000
-            self.logger.info(
-                f"r={reward:.2f} t={new_time:.2f} baseline={baseline:.2f}")
-            for ucb in ucbs:
-                ucb.update(reward)
-            timearr[i] = new_time
-            if new_time < best_time:
-                best_time = new_time
-                best_choices = choices.copy()
+            try:
+                self.call_compile(self.selected_optimizers, step_parameters,
+                                    None)
+                new_perf = self.call_perf()
+                features = [log10(1 + x) for x in new_perf.values()]
+                new_time = new_perf[metric] / 1000  # TODO: this needs to be solved
+                reward = (baseline - new_time) / 1000
+                self.logger.info(
+                    f"r={reward:.2f} t={new_time:.2f} baseline={baseline:.2f}")
+                for ucb in ucbs:
+                    ucb.update(reward)
+                timearr[i] = new_time
+                if new_time < best_time:
+                    best_time = new_time
+                    best_choices = choices.copy()
+            except TimeoutExpired:
+                self.logger.warning(f"[red]compile timeout[/]")
         plt.clf()
         plt.plot(timearr)
         plt.savefig(self.workspace + '/convergence_linUCB.png')
@@ -397,6 +401,8 @@ class Tuner:
             self.logger.error(f"[red]compile error[/]")
             self.logger.exception(err)
             return
+        except TimeoutExpired:
+            self.logger.error(f"[red]compile timeout[/]")
 
         res = 0
         for _ in track(range(num_samples), "before optimization"):
