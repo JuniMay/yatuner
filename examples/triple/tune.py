@@ -24,7 +24,7 @@ if not os.path.isdir('./build'):
     os.mkdir('./build')
 
 optimizers = set(yatuner.utils.fetch_gcc_optimizers(cc=cc)).difference(
-    yatuner.utils.fetch_gcc_enabled_optimizers(level=base))
+    yatuner.utils.fetch_gcc_enabled_optimizers(options=base))
 parameters = yatuner.utils.fetch_gcc_parameters(cc=cc)
 
 

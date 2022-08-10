@@ -204,7 +204,7 @@ def fetch_gcc_parameters(cc='gcc',
         
         for param, r, default in re.findall(regex, params_str, re.M):
             if r == '':
-                params[param] = (0, 2147483647, int(default))
+                params[param] = (0, int(default) * 10, int(default))
             else:
                 r_min = int(r[1:-1].split(',')[0])
                 r_max = int(r[1:-1].split(',')[1])
@@ -247,8 +247,8 @@ def fetch_gcc_parameters(cc='gcc',
 
     return params
 
-def fetch_gcc_enabled_optimizers(cc='gcc', level='-O3'):
-    raw = execute(f'{cc} {level} -Q --help=optimizers')['stdout']
+def fetch_gcc_enabled_optimizers(cc='gcc', options='-O3'):
+    raw = execute(f'{cc} {options} -Q --help=optimizers')['stdout']
     regex = r'(-f[a-z0-9-]+)\s+(\[enabled\]|\[disabled\])'
     optimizers = []
     for optimizer, status in re.findall(regex, raw):
@@ -256,3 +256,6 @@ def fetch_gcc_enabled_optimizers(cc='gcc', level='-O3'):
             optimizers.append(optimizer)
             
     return optimizers
+
+def fetch_size(filename: str) -> int:
+    return os.path.getsize(filename)
