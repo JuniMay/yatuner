@@ -31,6 +31,7 @@ import logging
 import yatuner
 import os
 
+cc = 'gcc'
 build_dir = './build'  # building directory for executable file.
 workspace = './workspace'  # workspace to store tuning result.
 
@@ -38,9 +39,9 @@ workspace = './workspace'  # workspace to store tuning result.
 if not os.path.isdir(build_dir):
     os.mkdir(build_dir)
 
-# you can replace these with auto-fetched or appointed optimizers/parameters.
-optimizers = []
-parameters = {{}}
+# you can replace these with appointed optimizers/parameters.
+optimizers = yatuner.utils.fetch_gcc_optimizers(cc=cc)
+parameters = yatuner.utils.fetch_gcc_parameters(cc=cc)
 
 ################################################################################
 
@@ -63,13 +64,13 @@ def perf():
 
 # defining tuner
 tuner = yatuner.Tuner(call_compile=comp,
-                    call_running=run,
-                    call_perf=perf,
-                    optimizers=optimizers,
-                    parameters=parameters,
-                    workspace=workspace,
-                    log_level=logging.INFO,
-                    norm_range=1.0)
+                      call_running=run,
+                      call_perf=perf,
+                      optimizers=optimizers,
+                      parameters=parameters,
+                      workspace=workspace,
+                      log_level=logging.INFO,
+                      norm_range=1.0)
 ################################################################################
 
 

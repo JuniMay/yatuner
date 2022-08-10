@@ -15,6 +15,8 @@ import pathlib
 import yatuner
 import os
 
+cc = 'gcc'
+base = '-O3'
 build_dir = './build'
 workspace_dir = './workspace'
 metric = 'duration_time'
@@ -25,11 +27,9 @@ if not os.path.isdir(build_dir):
 if not os.path.isdir(workspace_dir):
     os.mkdir(workspace_dir)
 
-gcc = yatuner.Gcc(src='',
-                  out='',
-                  cc='gcc',
-                  params_def_path='../params.def',
-                  template='{cc} {options} {src} -o {out}')
+optimizers = set(yatuner.utils.fetch_gcc_optimizers(cc=cc)).difference(
+    yatuner.utils.fetch_gcc_enabled_optimizers(level=base))
+parameters = yatuner.utils.fetch_gcc_parameters(cc=cc)
 
 benchmark_list = []
 for path in pathlib.Path('./polybench/').rglob('*.c'):
@@ -49,7 +49,7 @@ for case_dir, case_name in benchmark_list:
         if additional is not None:
             options = f'{additional} '
         else:
-            options = '-O3 '
+            options = f'{base} '
 
         if optimizers is not None:
             for optimizer in optimizers:
@@ -60,10 +60,14 @@ for case_dir, case_name in benchmark_list:
                 options += f'--param={parameter}={val} '
 
         options += f'-I polybench/utilities -I {case_dir} '
-        gcc.compile(
-            options,
-            src=f'polybench/utilities/polybench.c {case_dir}/{case_name}.c',
-            out=f'{build_dir}/{case_name}.exe')
+
+        res = yatuner.utils.execute(
+            f'{cc} {options} polybench/utilities/polybench.c '
+            f'{case_dir}/{case_name}.c -o '
+            f'{build_dir}/{case_name}.exe')
+
+        if res['returncode'] != 0:
+            raise RuntimeError(res['stderr'])
 
     def run():
         return yatuner.utils.fetch_perf_stat(
@@ -74,12 +78,12 @@ for case_dir, case_name in benchmark_list:
 
     tuner = yatuner.Tuner(comp,
                           run,
-                          gcc.fetch_optimizers(),
-                          gcc.fetch_parameters(),
+                          optimizers,
+                          parameters,
                           perf,
                           workspace=f'{workspace_dir}/{case_name}.db',
                           log_level=logging.INFO,
-                          norm_range=None)
+                          norm_range=0.99)
 
     logging.getLogger('PolyBench').info(
         f'Performing Optimization on {case_dir}')
@@ -92,7 +96,8 @@ for case_dir, case_name in benchmark_list:
     tuner.optimize_linUCB(alpha=0.25,
                           num_bins=30,
                           num_epochs=200,
-                          nth_choice=4)
+                          nth_choice=4,
+                          metric=metric)
 
     tuner.run(num_samples=50)
     tuner.plot_data()

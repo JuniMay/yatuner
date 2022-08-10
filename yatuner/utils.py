@@ -10,13 +10,14 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-from itertools import count
 import subprocess
 import re
 import os
-from typing import Any, Dict
 import numpy as np
 import platform
+import ast
+from typing import List, Tuple
+from typing import Any, Dict
 
 
 def execute(command) -> Dict[str, Any]:
@@ -47,49 +48,50 @@ def fetch_perf_stat(command) -> Dict[str, Any]:
     """Use `perf stat <command>` to analyze given program and get dict of counters.
 
     """
-    perf_command = ('perf stat -x,'
-                    ' -e branch-instructions '
-                    ' -e branch-misses '
-                    ' -e bus-cycles '
-                    ' -e cache-misses '
-                    ' -e cache-references '
-                    ' -e duration_time' 
-                    ' -e cpu-cycles '
-                    ' -e instructions '
-                    ' -e ref-cycles '
-                    ' -e alignment-faults '
-                    ' -e bpf-output '
-                    ' -e context-switches '
-                    ' -e cpu-clock '
-                    ' -e cpu-migrations '
-                    ' -e dummy '
-                    ' -e emulation-faults '
-                    ' -e major-faults '
-                    ' -e minor-faults '
-                    ' -e page-faults '
-                    ' -e task-clock '
-                    ' -e duration_time '
-                    ' -e user_time '
-                    ' -e system_time '
-                    # ' -e L1-dcache-load-misses '
-                    # ' -e L1-dcache-loads '
-                    # ' -e L1-dcache-stores '
-                    # ' -e L1-icache-load-misses '
-                    # ' -e branch-load-misses '
-                    # ' -e branch-loads '
-                    # ' -e dTLB-load-misses '
-                    # ' -e dTLB-loads '
-                    # ' -e dTLB-store-misses '
-                    # ' -e dTLB-stores '
-                    # ' -e iTLB-load-misses '
-                    # ' -e slots '
-                    # ' -e topdown-bad-spec '
-                    # ' -e topdown-be-bound '
-                    # ' -e topdown-fe-bound '
-                    # ' -e topdown-retiring '
-                    # ' -e msr/pperf/ '
-                    # ' -e msr/smi/ '
-                    ' -e msr/tsc/ '+ command)  # TODO: auto detect events
+    perf_command = (
+        'perf stat -x,'
+        ' -e branch-instructions '
+        ' -e branch-misses '
+        ' -e bus-cycles '
+        ' -e cache-misses '
+        ' -e cache-references '
+        ' -e duration_time'
+        ' -e cpu-cycles '
+        ' -e instructions '
+        ' -e ref-cycles '
+        ' -e alignment-faults '
+        ' -e bpf-output '
+        ' -e context-switches '
+        ' -e cpu-clock '
+        ' -e cpu-migrations '
+        ' -e dummy '
+        ' -e emulation-faults '
+        ' -e major-faults '
+        ' -e minor-faults '
+        ' -e page-faults '
+        ' -e task-clock '
+        ' -e duration_time '
+        # ' -e user_time '
+        # ' -e system_time '
+        # ' -e L1-dcache-load-misses '
+        # ' -e L1-dcache-loads '
+        # ' -e L1-dcache-stores '
+        # ' -e L1-icache-load-misses '
+        # ' -e branch-load-misses '
+        # ' -e branch-loads '
+        # ' -e dTLB-load-misses '
+        # ' -e dTLB-loads '
+        # ' -e dTLB-store-misses '
+        # ' -e dTLB-stores '
+        # ' -e iTLB-load-misses '
+        # ' -e slots '
+        # ' -e topdown-bad-spec '
+        # ' -e topdown-be-bound '
+        # ' -e topdown-fe-bound '
+        # ' -e topdown-retiring '
+        # ' -e msr/pperf/ '
+        # ' -e msr/smi/ '
+        + command)  # TODO: auto detect events
 
     res = execute(perf_command)
 
@@ -167,3 +169,90 @@ def fetch_src_feature(src: str,
 
 def fetch_arch() -> str:
     return platform.machine()
+
+
+def fetch_gcc_optimizers(cc='gcc') -> List[str]:
+    optimizers = []
+
+    opt = execute(f'{cc} --help=optimizers')['stdout']
+
+    optimizers = re.findall(r'^  (-f[a-z0-9-]+) ', opt, re.M)
+
+    return optimizers
+
+
+def fetch_gcc_version(cc='gcc') -> Tuple[int, int, int]:
+    version = None
+    ver = re.search(r'([0-9]+)[.]([0-9]+)[.]([0-9]+)',
+                    execute(f'{cc} --version')['stdout'])
+    if ver:
+        version = tuple(map(int, ver.group(1, 2, 3)))
+
+    return version
+
+
+def fetch_gcc_parameters(cc='gcc',
+                         params_def=None) -> Dict[str, Tuple[int, int, int]]:
+
+    version = fetch_gcc_version(cc)
+
+    params = {}
+
+    if version[0] > 9:
+        params_str = execute(f'{cc} -Q --help=params ')['stdout']
+        regex = r'^  --param=([a-z-]+)=(<[0-9]+,[0-9]+>)?\s+([0-9]+)'
+        
+        for param, r, default in re.findall(regex, params_str, re.M):
+            if r == '':
+                params[param] = (0, 2147483647, int(default))
+            else:
+                r_min = int(r[1:-1].split(',')[0])
+                r_max = int(r[1:-1].split(',')[1])
+                params[param] = (r_min, r_max, int(default))
+
+    else:
+        if params_def is None:
+            raise RuntimeError(
+                "Params definition file must be given for gcc-9 or earlier")
+        params_str = execute(f'{cc} --help=params ')['stdout']
+
+        regex = r'^  --param=([a-z-]+)'
+        raw_params = re.findall(regex, params_str, re.M)
+
+        regex = r'^  ([a-z-]+)'
+        params_def_file = open(params_def)
+        raw_params_def = params_def_file.read()
+        for m in re.finditer(r'DEFPARAM *\((([^")]|"[^"]*")*)\)',
+                             raw_params_def):
+            param_def_str = (
+                m.group(1)  #
+                .replace('GGC_MIN_EXPAND_DEFAULT', '30')  #
+                .replace('GGC_MIN_HEAPSIZE_DEFAULT', '4096')  #
+                .replace('50 * 1024 * 1024', '52428800')  #
+                .replace('128 * 1024 * 1024', '134217728')  #
+                .replace('INT_MAX', '2147483647'))  #
+
+            param, _, default, r_min, r_max = ast.literal_eval(
+                '[' + param_def_str.split(',', 1)[1] + ']')
+
+            if param not in raw_params:
+                continue
+
+            if r_max == 0:
+                r_max = min(default * 10, 2147483647)
+
+            params[param] = (r_min, r_max, default)
+
+        params_def_file.close()
+
+    return params
+
+def fetch_gcc_enabled_optimizers(cc='gcc', level='-O3'):
+    raw = execute(f'{cc} {level} -Q --help=optimizers')['stdout']
+    regex = r'(-f[a-z0-9-]+)\s+(\[enabled\]|\[disabled\])'
+    optimizers = []
+    for optimizer, status in re.findall(regex, raw):
+        if status == '[enabled]':
+            optimizers.append(optimizer)
+            
+    return optimizers

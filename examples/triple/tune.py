@@ -14,18 +14,18 @@ import logging
 import os
 import yatuner
 
+cc = 'g++'
 src = './src/triple.cpp'
 out = './build/triple.exe'
+base = '-O3'
 metric = 'duration_time'
-
-gcc = yatuner.Gcc(src=src,
-                  out=out,
-                  cc='g++',
-                  params_def_path='../params.def',
-                  template='{cc} {options} {src} -o {out}')
 
 if not os.path.isdir('./build'):
     os.mkdir('./build')
+
+optimizers = set(yatuner.utils.fetch_gcc_optimizers(cc=cc)).difference(
+    yatuner.utils.fetch_gcc_enabled_optimizers(level=base))
+parameters = yatuner.utils.fetch_gcc_parameters(cc=cc)
 
 
 def comp(optimizers, parameters, additional):
@@ -34,7 +34,7 @@ def comp(optimizers, parameters, additional):
     if additional is not None:
         options = f'{additional} '
     else:
-        options = '-O3 '
+        options = f'{base} '
 
     if optimizers is not None:
         for optimizer in optimizers:
@@ -44,30 +44,35 @@ def comp(optimizers, parameters, additional):
         for parameter, val in parameters.items():
             options += f'--param={parameter}={val} '
 
-    gcc.compile(options=options)
+    res = yatuner.utils.execute(f'{cc} {options} {src} -o {out}')
+    if res['returncode'] != 0:
+        raise RuntimeError(res['stderr'])
 
 
 def run():
-    return yatuner.utils.fetch_perf_stat(
-        gcc.fetch_execute_cmd())[metric] / 1000
+    return yatuner.utils.fetch_perf_stat(out)[metric] / 1000
 
 
 def perf():
-    return yatuner.utils.fetch_perf_stat(gcc.fetch_execute_cmd())
+    return yatuner.utils.fetch_perf_stat(out)
 
 
 tuner = yatuner.Tuner(comp,
                       run,
-                      gcc.fetch_optimizers(),
-                      gcc.fetch_parameters(),
+                      optimizers,
+                      parameters,
                       call_perf=perf,
-                      norm_range=None)
+                      norm_range=0.99)
 
 tuner.initialize()
 tuner.test_run(num_samples=50, warmup=0)
 tuner.hypotest_optimizers(num_samples=5)
 tuner.hypotest_parameters(num_samples=5)
-# tuner.optimize(num_samples=10)
-tuner.optimize_linUCB(alpha=0.25, num_bins=30, num_epochs=200, nth_choice=4)
+# tuner.optimize(num_samples=10, num_epochs=50)
+tuner.optimize_linUCB(alpha=0.25,
+                      num_bins=30,
+                      num_epochs=200,
+                      nth_choice=4,
+                      metric=metric)
 tuner.run(num_samples=50)
 tuner.plot_data()
