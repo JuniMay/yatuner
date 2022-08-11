@@ -590,6 +590,10 @@ class Tuner:
         Args:
             num_samples (int, optional): Sampling times. Defaults to 10.
         """
+        
+        if os.path.exists(self.workspace + '/result.csv'):
+            self.logger.info("aready done.")
+            return
 
         samples_ofast = np.zeros(num_samples)
         samples_o0 = np.zeros(num_samples)
@@ -750,6 +754,7 @@ class Tuner:
         if not os.path.exists(self.workspace + '/result.csv'):
             self.logger.error("No data found.")
             return
+
         plt.style.use('seaborn')
         pd_data = pd.read_csv(self.workspace + "/result.csv")
         plt.clf()

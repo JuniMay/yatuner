@@ -41,6 +41,9 @@ for path in pathlib.Path('./polybench/').rglob('*.c'):
     case_name = case_dir.rsplit('/', 1)[1]
     benchmark_list.append((case_dir, case_name))
 
+logger = logging.getLogger('polybench')
+logger.setLevel(logging.INFO)
+
 for case_dir, case_name in benchmark_list:
 
     def comp(optimizers, parameters, additional):
@@ -85,8 +88,7 @@ for case_dir, case_name in benchmark_list:
                           log_level=logging.INFO,
                           norm_range=0.99)
 
-    logging.getLogger('PolyBench').info(
-        f'Performing Optimization on {case_dir}')
+    logger.info(f'Performing Optimization on {case_dir}')
 
     tuner.initialize()
     tuner.test_run(num_samples=200, warmup=10)
