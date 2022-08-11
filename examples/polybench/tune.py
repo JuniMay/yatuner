@@ -44,12 +44,12 @@ for path in pathlib.Path('./polybench/').rglob('*.c'):
 for case_dir, case_name in benchmark_list:
 
     def comp(optimizers, parameters, additional):
-        options = ''
+        options = '-DMEDIUM_DATASET '
 
         if additional is not None:
-            options = f'{additional} '
+            options += f'{additional} '
         else:
-            options = f'{base} '
+            options += f'{base} '
 
         if optimizers is not None:
             for optimizer in optimizers:

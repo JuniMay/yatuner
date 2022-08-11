@@ -463,7 +463,7 @@ class Tuner:
                 features = [log10(1 + x) for x in new_perf.values()]
                 new_time = new_perf[
                     metric] / 1000  # TODO: this needs to be solved
-                reward = (baseline - new_time) / 1000
+                reward = (baseline - new_time) / 100
                 self.logger.debug(
                     f"r={reward:.2f} t={new_time:.2f} baseline={baseline:.2f}")
                 for ucb in ucbs:
