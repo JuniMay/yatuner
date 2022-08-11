@@ -249,7 +249,7 @@ class Tuner:
                                                      domain=bounds,
                                                      acquisition_type='LCB',
                                                      acquisition_weight=0.2)
-        method.run_optimization(max_iter=num_epochs, eps=1e-10)
+        method.run_optimization(max_iter=num_epochs, eps=0.0)
         # method.plot_convergence(self.workspace + '/convergence.png')
 
         self.logger.info(f"best result: {method.fx_opt.flatten()[0]}")

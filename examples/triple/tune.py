@@ -25,6 +25,7 @@ if not os.path.isdir('./build'):
 
 optimizers = set(yatuner.utils.fetch_gcc_optimizers(cc=cc)).difference(
     yatuner.utils.fetch_gcc_enabled_optimizers(options=base))
+# optimizers.remove('-fipa-pta')
 parameters = yatuner.utils.fetch_gcc_parameters(cc=cc)
 
 
@@ -65,8 +66,8 @@ tuner = yatuner.Tuner(comp,
                       norm_range=0.99)
 
 tuner.initialize()
-tuner.test_run(num_samples=50, warmup=0)
-tuner.hypotest_optimizers(num_samples=5)
+tuner.test_run(num_samples=50, warmup=10)
+tuner.hypotest_optimizers(num_samples=5, num_epochs=30)
 tuner.hypotest_parameters(num_samples=5)
 # tuner.optimize(num_samples=10, num_epochs=50)
 tuner.optimize_linUCB(alpha=0.25,
