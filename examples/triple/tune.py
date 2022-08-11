@@ -30,12 +30,12 @@ parameters = yatuner.utils.fetch_gcc_parameters(cc=cc)
 
 
 def comp(optimizers, parameters, additional):
-    options = ''
+    options = '-DMEDIUM_DATASET '
 
     if additional is not None:
-        options = f'{additional} '
+        options += f'{additional} '
     else:
-        options = f'{base} '
+        options += f'{base} '
 
     if optimizers is not None:
         for optimizer in optimizers:

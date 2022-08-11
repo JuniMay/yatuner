@@ -463,7 +463,7 @@ class Tuner:
                 new_time = new_perf[
                     metric] / 1000  # TODO: this needs to be solved
                 reward = (baseline - new_time) / 1000
-                self.logger.info(
+                self.logger.debug(
                     f"r={reward:.2f} t={new_time:.2f} baseline={baseline:.2f}")
                 for ucb in ucbs:
                     ucb.update(reward)
