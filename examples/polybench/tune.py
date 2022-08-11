@@ -62,10 +62,15 @@ for case_dir, case_name in benchmark_list:
             for parameter, val in parameters.items():
                 options += f'--param={parameter}={val} '
 
-        options += f'-I polybench/utilities -I {case_dir} '
+        options += f'-I {case_dir} -I polybench/utilities '
+
+        lm = ''
+
+        if case_name in ['cholesky', 'gramschmidt', 'correlation']:
+            lm = '-lm'
 
         res = yatuner.utils.execute(
-            f'{cc} {options} polybench/utilities/polybench.c '
+            f'{cc} {options} {lm} polybench/utilities/polybench.c '
             f'{case_dir}/{case_name}.c -o '
             f'{build_dir}/{case_name}.exe')
 
