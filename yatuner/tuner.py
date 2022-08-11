@@ -328,6 +328,8 @@ class Tuner:
                 self.logger.error(f"[red]compile error with {parameter}[/]")
                 self.logger.exception(err)
                 continue
+            except TimeoutExpired:
+                self.logger.warning(f"[red]compile timeout with {parameter}[/]")
 
             for j in range(num_samples):
                 res = self.call_running()
@@ -341,6 +343,8 @@ class Tuner:
                 self.logger.error(f"[red]compile error with {parameter}[/]")
                 self.logger.exception(err)
                 continue
+            except TimeoutExpired:
+                self.logger.warning(f"[red]compile timeout with {parameter}[/]")
 
             for j in range(num_samples):
                 res = self.call_running()
