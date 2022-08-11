@@ -249,14 +249,14 @@ class Tuner:
                                                      domain=bounds,
                                                      acquisition_type='LCB',
                                                      acquisition_weight=0.2)
-        method.run_optimization(max_iter=num_epochs)
+        method.run_optimization(max_iter=num_epochs, eps=1e-10)
         # method.plot_convergence(self.workspace + '/convergence.png')
 
         self.logger.info(f"best result: {method.fx_opt.flatten()[0]}")
         self.logger.info(f"best option: {method.x_opt}")
         new_optimizers = []
         for idx, x in enumerate(method.x_opt):
-            if not x:
+            if x:
                 new_optimizers.append(self.selected_optimizers[idx])
         self.selected_optimizers = new_optimizers
                 
