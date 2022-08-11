@@ -10,7 +10,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-from math import log10
+from math import inf, log10
 import os
 from subprocess import TimeoutExpired
 from typing import Callable, Dict, Mapping, Sequence, Tuple, Any
@@ -212,8 +212,9 @@ class Tuner:
             if (p < z_threshold or t < t_threshold) and z < 0:
                 self.selected_optimizers.append(optimizer)
                 self.logger.info(f"[green]{optimizer} is selected[/]")
-        
-        self.logger.info(f"{len(self.selected_optimizers)} optimizers selected")
+
+        self.logger.info(
+            f"{len(self.selected_optimizers)} optimizers selected")
         self.logger.info(f"optimizing optimizers")
         cnt = 0
 
@@ -223,10 +224,14 @@ class Tuner:
 
             step_optimizers = []
             for i, opt in enumerate(self.selected_optimizers):
-                if(vals[0][i]):
+                if (vals[0][i]):
                     step_optimizers.append(opt)
-
-            self.call_compile(step_optimizers, None, None)
+            try:
+                self.call_compile(step_optimizers, None, None)
+            except RuntimeError as err:
+                self.logger.error("[red]compile error[/]")
+                self.logger.exception(err)
+                return inf
 
             res = 0
             for _ in track(range(num_samples), f'step {cnt}'):
@@ -260,7 +265,7 @@ class Tuner:
             if x:
                 new_optimizers.append(self.selected_optimizers[idx])
         self.selected_optimizers = new_optimizers
-                
+
         with open(self.workspace + '/selected_optimizers.txt',
                   'w',
                   encoding='utf-8') as f:
@@ -330,7 +335,8 @@ class Tuner:
                 self.logger.exception(err)
                 continue
             except TimeoutExpired:
-                self.logger.warning(f"[red]compile timeout with {parameter}[/]")
+                self.logger.warning(
+                    f"[red]compile timeout with {parameter}[/]")
 
             for j in range(num_samples):
                 res = self.call_running()
@@ -345,7 +351,8 @@ class Tuner:
                 self.logger.exception(err)
                 continue
             except TimeoutExpired:
-                self.logger.warning(f"[red]compile timeout with {parameter}[/]")
+                self.logger.warning(
+                    f"[red]compile timeout with {parameter}[/]")
 
             for j in range(num_samples):
                 res = self.call_running()
@@ -543,7 +550,13 @@ class Tuner:
                           self.parameters[parameter][0])
                 step_parameters[parameter] = int(v)
 
-            self.call_compile(self.selected_optimizers, step_parameters, None)
+            try:
+                self.call_compile(self.selected_optimizers, step_parameters,
+                                  None)
+            except RuntimeError as err:
+                self.logger.error("[red]compile error[/]")
+                self.logger.exception(err)
+                return inf
 
             res = 0
             for _ in track(range(num_samples), f'step {cnt}'):
@@ -590,7 +603,7 @@ class Tuner:
         Args:
             num_samples (int, optional): Sampling times. Defaults to 10.
         """
-        
+
         if os.path.exists(self.workspace + '/result.csv'):
             self.logger.info("aready done.")
             return
