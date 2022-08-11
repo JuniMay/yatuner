@@ -94,7 +94,7 @@ for case_dir, case_name in benchmark_list:
                           log_level=logging.INFO,
                           norm_range=0.99)
 
-    logger.info(f'Performing Optimization on {case_dir}')
+    logger.info(f'[bold]Performing Optimization on {case_dir}[/]')
 
     tuner.initialize()
     tuner.test_run(num_samples=200, warmup=10)
