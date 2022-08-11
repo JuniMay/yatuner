@@ -44,6 +44,25 @@ class Tuner:
                  workspace='yatuner.db',
                  log_level=logging.DEBUG,
                  norm_range=None) -> None:
+        """A tuner.
+
+        Args:
+            call_compile ((Sequence[str], Mapping, str) -> None): A function
+                runing compilation process.
+            call_running (() -> float): A function fetching result of target 
+                program.
+            optimizers (Sequence[str]): List of on/of options.
+            parameters (Mapping[str, Tuple]): List of parameters, 
+                in format of `param: (min, max, default)`
+            call_perf (() -> Dict[str, Any], optional): Fectch feature of given 
+                program, used in linUCB. Defaults to None.
+            workspace (str, optional): Directory to store output files. 
+                Defaults to 'yatuner.db'.
+            log_level (_type_, optional): Log level. Defaults to logging.DEBUG.
+            norm_range (_type_, optional): Cut the data of test run to get more 
+                accurate result, None if doing a symmetrization. 
+                Defaults to None.
+        """
 
         logging.basicConfig(format='[ %(name)s ] %(message)s',
                             handlers=[
@@ -73,6 +92,12 @@ class Tuner:
             os.mkdir(self.workspace)
 
     def test_run(self, num_samples=200, warmup=50):
+        """Doing a test run with no options indicated.
+
+        Args:
+            num_samples (int, optional): Times to run. Defaults to 200.
+            warmup (int, optional): Times to warmup. Defaults to 50.
+        """
         self.call_compile(None, None, None)
         self.exec_data = []
 
@@ -120,6 +145,14 @@ class Tuner:
                             num_samples=10,
                             z_threshold=0.05,
                             t_threshold=0.05):
+        """Hypothesis test for on/of options.
+
+        Args:
+            num_samples (int, optional): Sampling times for each option. 
+                Defaults to 10.
+            z_threshold (float, optional): Z threshold. Defaults to 0.05.
+            t_threshold (float, optional): T threshold. Defaults to 0.05.
+        """
 
         if os.path.exists(self.workspace + '/selected_optimizers.txt'):
             self.logger.info("using existing selected optimizers.")
@@ -194,6 +227,13 @@ class Tuner:
         plt.savefig(self.workspace + "/hypotest_optimizers_distribution.png")
 
     def hypotest_parameters(self, num_samples=10, t_threshold=0.05):
+        """Hypothesis test for parameters.
+
+        Args:
+            num_samples (int, optional): Sampling times for each parameter. 
+                Defaults to 10.
+            t_threshold (float, optional): T threshold. Defaults to 0.05.
+        """
 
         if os.path.exists(self.workspace + '/selected_parameters.txt'):
             self.logger.info("using existing selected parameters")
@@ -273,9 +313,10 @@ class Tuner:
                         num_epochs=200,
                         num_samples=10,
                         num_bins=25,
-                        method='parallel',
                         nth_choice=3,
                         metric='cpu-cycles') -> None:
+        """Optimize selected parameters with linUCB."""
+
         if self.call_perf == None:
             self.logger.error("call_perf not found")
             return
@@ -329,13 +370,13 @@ class Tuner:
         features = [log10(1 + x) for x in self.call_perf().values()]
         ucbs = [
             LinUCB.LinUCB(dim,
-                            np.linspace(self.parameters[param][0],
-                                        self.parameters[param][1],
-                                        num_bins,
-                                        endpoint=True,
-                                        dtype='int'),
-                            alpha=alpha,
-                            nth_choice=nth_choice)
+                          np.linspace(self.parameters[param][0],
+                                      self.parameters[param][1],
+                                      num_bins,
+                                      endpoint=True,
+                                      dtype='int'),
+                          alpha=alpha,
+                          nth_choice=nth_choice)
             for param in self.selected_parameters
         ]
         for ucb in ucbs:
@@ -353,10 +394,11 @@ class Tuner:
             # print(step_parameters)
             try:
                 self.call_compile(self.selected_optimizers, step_parameters,
-                                    None)
+                                  None)
                 new_perf = self.call_perf()
                 features = [log10(1 + x) for x in new_perf.values()]
-                new_time = new_perf[metric] / 1000  # TODO: this needs to be solved
+                new_time = new_perf[
+                    metric] / 1000  # TODO: this needs to be solved
                 reward = (baseline - new_time) / 1000
                 self.logger.info(
                     f"r={reward:.2f} t={new_time:.2f} baseline={baseline:.2f}")
@@ -378,7 +420,9 @@ class Tuner:
             for idx, param in enumerate(self.selected_parameters):
                 file.write(param + " " + str(best_choices[idx]) + '\n')
 
-    def optimize(self, num_samples=10, num_epochs=60):
+    def optimize(self, num_samples=10, num_epochs=60) -> None:
+        """Optimize selected parameters with bayesian."""
+
         if os.path.exists(self.workspace + '/optimized_parameters.txt'):
             self.logger.info("using existing optimized parameters.")
             return
@@ -477,6 +521,12 @@ class Tuner:
                 file.write(f'{parameter} {int(v)}\n')
 
     def run(self, num_samples=10):
+        """Run result and existing options to compare.
+
+        Args:
+            num_samples (int, optional): Sampling times. Defaults to 10.
+        """
+
         samples_ofast = np.zeros(num_samples)
         samples_o0 = np.zeros(num_samples)
         samples_o1 = np.zeros(num_samples)
@@ -631,6 +681,8 @@ class Tuner:
         console.print(table)
 
     def plot_data(self) -> None:
+        """Plot result."""
+
         if not os.path.exists(self.workspace + '/result.csv'):
             self.logger.error("No data found.")
             return
