@@ -234,7 +234,7 @@ class Tuner:
                 return inf
 
             res = 0
-            for _ in track(range(num_samples), f'step {cnt}'):
+            for _ in track(range(num_samples), f'epoch {cnt:<5}'):
                 res += self.call_running()
             res /= num_samples
 
@@ -559,7 +559,7 @@ class Tuner:
                 return inf
 
             res = 0
-            for _ in track(range(num_samples), f'step {cnt}'):
+            for _ in track(range(num_samples), f'epoch {cnt:<5}'):
                 res += self.call_running()
             res /= num_samples
 
