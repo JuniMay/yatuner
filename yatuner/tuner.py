@@ -248,7 +248,8 @@ class Tuner:
         method = GPyOpt.methods.BayesianOptimization(step,
                                                      domain=bounds,
                                                      acquisition_type='LCB',
-                                                     acquisition_weight=0.2)
+                                                     acquisition_weight=0.2,
+                                                     initial_design_numdata=20)
         method.run_optimization(max_iter=num_epochs, eps=0.0)
         # method.plot_convergence(self.workspace + '/convergence.png')
 
