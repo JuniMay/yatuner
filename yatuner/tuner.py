@@ -144,7 +144,8 @@ class Tuner:
     def hypotest_optimizers(self,
                             num_samples=10,
                             z_threshold=0.05,
-                            t_threshold=0.05):
+                            t_threshold=0.05,
+                            num_epochs=30):
         """Hypothesis test for on/of options.
 
         Args:
@@ -152,6 +153,8 @@ class Tuner:
                 Defaults to 10.
             z_threshold (float, optional): Z threshold. Defaults to 0.05.
             t_threshold (float, optional): T threshold. Defaults to 0.05.
+            num_epochs (int, optional): optimization epoches after selection.
+                Defaults to 30.
         """
 
         if os.path.exists(self.workspace + '/selected_optimizers.txt'):
@@ -200,7 +203,54 @@ class Tuner:
             if (p < z_threshold or t < t_threshold) and z < 0:
                 self.selected_optimizers.append(optimizer)
                 self.logger.info(f"[green]{optimizer} is selected[/]")
+        
+        self.logger.info(f"{len(self.selected_optimizers)} optimizers selected")
+        self.logger.info(f"optimizing optimizers")
+        cnt = 0
 
+        def step(vals) -> float:
+
+            nonlocal cnt
+
+            step_optimizers = []
+            for i, opt in enumerate(self.selected_optimizers):
+                if(vals[0][i]):
+                    step_optimizers.append(opt)
+
+            self.call_compile(step_optimizers, None, None)
+
+            res = 0
+            for _ in track(range(num_samples), f'step {cnt}'):
+                res += self.call_running()
+            res /= num_samples
+
+            self.logger.debug(f'{cnt}/{num_epochs} result: {res:.2f}')
+
+            cnt += 1
+
+            return res
+
+        bounds = [{
+            'name': opt,
+            'type': 'discrete',
+            'domain': (0, 1)
+        } for opt in self.selected_optimizers]
+
+        method = GPyOpt.methods.BayesianOptimization(step,
+                                                     domain=bounds,
+                                                     acquisition_type='LCB',
+                                                     acquisition_weight=0.2)
+        method.run_optimization(max_iter=num_epochs)
+        # method.plot_convergence(self.workspace + '/convergence.png')
+
+        self.logger.info(f"best result: {method.fx_opt.flatten()[0]}")
+        self.logger.info(f"best option: {method.x_opt}")
+        new_optimizers = []
+        for idx, x in enumerate(method.x_opt):
+            if not x:
+                new_optimizers.append(self.selected_optimizers[idx])
+        self.selected_optimizers = new_optimizers
+                
         with open(self.workspace + '/selected_optimizers.txt',
                   'w',
                   encoding='utf-8') as f:
