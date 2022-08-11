@@ -29,6 +29,7 @@ if not os.path.isdir(workspace_dir):
 
 optimizers = set(yatuner.utils.fetch_gcc_optimizers(cc=cc)).difference(
     yatuner.utils.fetch_gcc_enabled_optimizers(options=base))
+optimizers.remove('-fipa-pta')
 parameters = yatuner.utils.fetch_gcc_parameters(cc=cc)
 
 benchmark_list = []
