@@ -98,16 +98,25 @@ class Tuner:
             num_samples (int, optional): Times to run. Defaults to 200.
             warmup (int, optional): Times to warmup. Defaults to 50.
         """
-        self.call_compile(None, None, None)
-        self.exec_data = []
+        if os.path.exists(self.workspace + '/test_run.csv'):
+            self.logger.info("using existing test run result.")
+            pd_data = pd.read_csv(self.workspace + '/test_run.csv')
+            self.exec_data = pd_data.to_numpy().transpose()[0].tolist()
 
-        for i in track(range(warmup), description=' warmup'):
-            res = self.call_running()
-            self.logger.debug(f"warmup {i}/{warmup} result: {res}")
+        else:
+            self.call_compile(None, None, None)
+            self.exec_data = []
 
-        for _ in track(range(num_samples), description='testrun'):
-            res = self.call_running()
-            self.exec_data.append(res)
+            for i in track(range(warmup), description='  warmup'):
+                res = self.call_running()
+                self.logger.debug(f"warmup {i}/{warmup} result: {res}")
+
+            for _ in track(range(num_samples), description='test run'):
+                res = self.call_running()
+                self.exec_data.append(res)
+
+            pd_data = pd.DataFrame({'test_run': self.exec_data})
+            pd_data.to_csv(self.workspace + '/test_run.csv', index=0)
 
         if self.symmetrization:
             self.exec_data.sort()
