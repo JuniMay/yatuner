@@ -719,7 +719,7 @@ class Tuner:
             'O3': samples_o3,
             'Ofast': samples_ofast,
             'Optimizers': samples_optimizers,
-            'parameters': samples_parameters
+            'Parameters': samples_parameters
         })
         pd_data.to_csv(self.workspace + "/result.csv", index=0)
 
