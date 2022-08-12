@@ -8,38 +8,38 @@
 \begin{document}
 \begin{longtable}{rrrrrrrr}
 \toprule
-Case Name	& O1	& O2	& O3	& HypoT	& HypoT+LinUCB	& \Delta_{HypoT}	& \Delta_{HypoT+LinUCB} \\
+Case Name	& O1	& O2	& O3	& HypoT	& LinUCB	& \Delta_{HypoT}	& \Delta_{LinUCB} \\
 \midrule
-doitgen	& 35655.74	& \textcolor{blue}{\textbf{14307.57}}	& 14234.63	& 13365.32	& \textcolor{red}{\textbf{12139.84}}	& 6.59\%	& 15.15\% \\
-syrk	& 12566.83	& \textcolor{blue}{\textbf{10768.31}}	& 7096.93	& 6546.30	& \textcolor{red}{\textbf{6281.91}}	& 39.21\%	& 41.66\% \\
-trisolv	& 2253.50	& \textcolor{blue}{\textbf{2038.49}}	& 2031.31	& 1597.71	& \textcolor{red}{\textbf{1571.07}}	& 21.62\%	& 22.93\% \\
-deriche	& 17234.85	& \textcolor{blue}{\textbf{14246.29}}	& 12264.01	& 10543.02	& \textcolor{red}{\textbf{9715.15}}	& 25.99\%	& 31.81\% \\
-gemm	& 25765.26	& \textcolor{blue}{\textbf{20115.28}}	& 9788.46	& 8826.51	& \textcolor{red}{\textbf{7439.64}}	& 56.12\%	& 63.01\% \\
-adi	& 196837.94	& \textcolor{blue}{\textbf{159340.28}}	& 144009.28	& \textcolor{red}{\textbf{142451.69}}	& 142934.20	& 10.60\%	& 10.30\% \\
-gesummv	& 2455.84	& \textcolor{blue}{\textbf{2434.06}}	& 2496.57	& 1851.50	& \textcolor{red}{\textbf{1701.81}}	& 23.93\%	& 30.08\% \\
-ludcmp	& 235731.58	& \textcolor{blue}{\textbf{227215.77}}	& 165477.85	& 151272.72	& \textcolor{red}{\textbf{150848.93}}	& 33.42\%	& 33.61\% \\
-durbin	& 957.20	& \textcolor{blue}{\textbf{918.05}}	& 889.20	& \textcolor{red}{\textbf{820.41}}	& 823.38	& 10.63\%	& 10.31\% \\
-fdtd-2d	& 78932.20	& \textcolor{blue}{\textbf{63606.72}}	& 40679.59	& \textcolor{red}{\textbf{39877.79}}	& 39915.90	& 37.31\%	& 37.25\% \\
-seidel-2d	& 320159.44	& \textcolor{blue}{\textbf{318990.84}}	& 262602.31	& 117326.05	& \textcolor{red}{\textbf{117320.72}}	& 63.22\%	& 63.22\% \\
-mvt	& 4104.78	& \textcolor{blue}{\textbf{3238.27}}	& 3208.89	& 2490.71	& \textcolor{red}{\textbf{2258.97}}	& 23.09\%	& 30.24\% \\
-floyd-warshall	& 287931.22	& \textcolor{blue}{\textbf{288670.91}}	& 286730.83	& 242933.51	& \textcolor{red}{\textbf{206837.96}}	& 15.84\%	& 28.35\% \\
-cholesky	& 248576.52	& \textcolor{blue}{\textbf{204167.06}}	& 144021.03	& 144359.55	& \textcolor{red}{\textbf{142581.73}}	& 29.29\%	& 30.16\% \\
-symm	& 18896.09	& \textcolor{blue}{\textbf{16130.93}}	& 16154.86	& 15357.18	& \textcolor{red}{\textbf{15310.76}}	& 4.80\%	& 5.08\% \\
-atax	& 3458.29	& \textcolor{blue}{\textbf{2992.93}}	& 2951.63	& \textcolor{red}{\textbf{2124.66}}	& 2138.00	& 29.01\%	& 28.56\% \\
-lu	& 303913.45	& \textcolor{blue}{\textbf{224682.33}}	& 166327.03	& 165769.42	& \textcolor{red}{\textbf{164114.96}}	& 26.22\%	& 26.96\% \\
-jacobi-1d	& 802.39	& \textcolor{blue}{\textbf{789.15}}	& 757.64	& 748.90	& \textcolor{red}{\textbf{748.85}}	& 5.10\%	& 5.11\% \\
-trmm	& 25674.92	& \textcolor{blue}{\textbf{10464.67}}	& 10447.77	& 9935.17	& \textcolor{red}{\textbf{9114.13}}	& 5.06\%	& 12.91\% \\
-nussinov	& 66901.11	& \textcolor{blue}{\textbf{31045.69}}	& 31117.30	& 25275.49	& \textcolor{red}{\textbf{22513.71}}	& 18.59\%	& 27.48\% \\
-jacobi-2d	& 67372.87	& \textcolor{blue}{\textbf{67456.76}}	& 36930.25	& 36082.24	& \textcolor{red}{\textbf{36050.60}}	& 46.51\%	& 46.56\% \\
-gemver	& 4960.28	& \textcolor{blue}{\textbf{3973.89}}	& 3491.46	& 2562.34	& \textcolor{red}{\textbf{2561.25}}	& 35.52\%	& 35.55\% \\
-correlation	& 42123.63	& \textcolor{blue}{\textbf{17166.35}}	& 17202.40	& 16210.76	& \textcolor{red}{\textbf{14615.85}}	& 5.57\%	& 14.86\% \\
-bicg	& 3467.12	& \textcolor{blue}{\textbf{3490.79}}	& 3485.56	& 2704.96	& \textcolor{red}{\textbf{2525.27}}	& 22.51\%	& 27.66\% \\
-3mm	& 122622.42	& \textcolor{blue}{\textbf{47544.13}}	& 47502.33	& 46924.33	& \textcolor{red}{\textbf{42681.74}}	& 1.30\%	& 10.23\% \\
-gramschmidt	& 43068.62	& \textcolor{blue}{\textbf{22522.39}}	& 22522.84	& 22306.94	& \textcolor{red}{\textbf{20864.80}}	& 0.96\%	& 7.36\% \\
-2mm	& 79954.75	& \textcolor{blue}{\textbf{31822.48}}	& 31645.61	& 31073.43	& \textcolor{red}{\textbf{27065.30}}	& 2.35\%	& 14.95\% \\
-heat-3d	& 76925.01	& \textcolor{blue}{\textbf{73318.43}}	& 59536.18	& \textcolor{red}{\textbf{59034.73}}	& 59254.13	& 19.48\%	& 19.18\% \\
-syr2k	& 28018.76	& \textcolor{blue}{\textbf{23573.59}}	& 18001.47	& \textcolor{red}{\textbf{15105.35}}	& 15156.78	& 35.92\%	& 35.70\% \\
-covariance	& 41856.33	& \textcolor{blue}{\textbf{16827.41}}	& 16862.92	& 15789.53	& \textcolor{red}{\textbf{14064.73}}	& 6.17\%	& 16.42\% \\
+doitgen	& 35.66	& \textcolor{blue}{\textbf{14.31}}	& 14.23	& 13.37	& \textcolor{red}{\textbf{12.14}}	& 6.59\%	& 15.15\% \\
+syrk	& 12.57	& \textcolor{blue}{\textbf{10.77}}	& 7.10	& 6.55	& \textcolor{red}{\textbf{6.28}}	& 39.21\%	& 41.66\% \\
+trisolv	& 2.25	& \textcolor{blue}{\textbf{2.04}}	& 2.03	& 1.60	& \textcolor{red}{\textbf{1.57}}	& 21.62\%	& 22.93\% \\
+deriche	& 17.23	& \textcolor{blue}{\textbf{14.25}}	& 12.26	& 10.54	& \textcolor{red}{\textbf{9.72}}	& 25.99\%	& 31.81\% \\
+gemm	& 25.77	& \textcolor{blue}{\textbf{20.12}}	& 9.79	& 8.83	& \textcolor{red}{\textbf{7.44}}	& 56.12\%	& 63.01\% \\
+adi	& 196.84	& \textcolor{blue}{\textbf{159.34}}	& 144.01	& \textcolor{red}{\textbf{142.45}}	& 142.93	& 10.60\%	& 10.30\% \\
+gesummv	& 2.46	& \textcolor{blue}{\textbf{2.43}}	& 2.50	& 1.85	& \textcolor{red}{\textbf{1.70}}	& 23.93\%	& 30.08\% \\
+ludcmp	& 235.73	& \textcolor{blue}{\textbf{227.22}}	& 165.48	& 151.27	& \textcolor{red}{\textbf{150.85}}	& 33.42\%	& 33.61\% \\
+durbin	& 0.96	& \textcolor{blue}{\textbf{0.92}}	& 0.89	& \textcolor{red}{\textbf{0.82}}	& 0.82	& 10.63\%	& 10.31\% \\
+fdtd-2d	& 78.93	& \textcolor{blue}{\textbf{63.61}}	& 40.68	& \textcolor{red}{\textbf{39.88}}	& 39.92	& 37.31\%	& 37.25\% \\
+seidel-2d	& 320.16	& \textcolor{blue}{\textbf{318.99}}	& 262.60	& 117.33	& \textcolor{red}{\textbf{117.32}}	& 63.22\%	& 63.22\% \\
+mvt	& 4.10	& \textcolor{blue}{\textbf{3.24}}	& 3.21	& 2.49	& \textcolor{red}{\textbf{2.26}}	& 23.09\%	& 30.24\% \\
+floyd-warshall	& 287.93	& \textcolor{blue}{\textbf{288.67}}	& 286.73	& 242.93	& \textcolor{red}{\textbf{206.84}}	& 15.84\%	& 28.35\% \\
+cholesky	& 248.58	& \textcolor{blue}{\textbf{204.17}}	& 144.02	& 144.36	& \textcolor{red}{\textbf{142.58}}	& 29.29\%	& 30.16\% \\
+symm	& 18.90	& \textcolor{blue}{\textbf{16.13}}	& 16.15	& 15.36	& \textcolor{red}{\textbf{15.31}}	& 4.80\%	& 5.08\% \\
+atax	& 3.46	& \textcolor{blue}{\textbf{2.99}}	& 2.95	& \textcolor{red}{\textbf{2.12}}	& 2.14	& 29.01\%	& 28.56\% \\
+lu	& 303.91	& \textcolor{blue}{\textbf{224.68}}	& 166.33	& 165.77	& \textcolor{red}{\textbf{164.11}}	& 26.22\%	& 26.96\% \\
+jacobi-1d	& 0.80	& \textcolor{blue}{\textbf{0.79}}	& 0.76	& 0.75	& \textcolor{red}{\textbf{0.75}}	& 5.10\%	& 5.11\% \\
+trmm	& 25.67	& \textcolor{blue}{\textbf{10.46}}	& 10.45	& 9.94	& \textcolor{red}{\textbf{9.11}}	& 5.06\%	& 12.91\% \\
+nussinov	& 66.90	& \textcolor{blue}{\textbf{31.05}}	& 31.12	& 25.28	& \textcolor{red}{\textbf{22.51}}	& 18.59\%	& 27.48\% \\
+jacobi-2d	& 67.37	& \textcolor{blue}{\textbf{67.46}}	& 36.93	& 36.08	& \textcolor{red}{\textbf{36.05}}	& 46.51\%	& 46.56\% \\
+gemver	& 4.96	& \textcolor{blue}{\textbf{3.97}}	& 3.49	& 2.56	& \textcolor{red}{\textbf{2.56}}	& 35.52\%	& 35.55\% \\
+correlation	& 42.12	& \textcolor{blue}{\textbf{17.17}}	& 17.20	& 16.21	& \textcolor{red}{\textbf{14.62}}	& 5.57\%	& 14.86\% \\
+bicg	& 3.47	& \textcolor{blue}{\textbf{3.49}}	& 3.49	& 2.70	& \textcolor{red}{\textbf{2.53}}	& 22.51\%	& 27.66\% \\
+3mm	& 122.62	& \textcolor{blue}{\textbf{47.54}}	& 47.50	& 46.92	& \textcolor{red}{\textbf{42.68}}	& 1.30\%	& 10.23\% \\
+gramschmidt	& 43.07	& \textcolor{blue}{\textbf{22.52}}	& 22.52	& 22.31	& \textcolor{red}{\textbf{20.86}}	& 0.96\%	& 7.36\% \\
+2mm	& 79.95	& \textcolor{blue}{\textbf{31.82}}	& 31.65	& 31.07	& \textcolor{red}{\textbf{27.07}}	& 2.35\%	& 14.95\% \\
+heat-3d	& 76.93	& \textcolor{blue}{\textbf{73.32}}	& 59.54	& \textcolor{red}{\textbf{59.03}}	& 59.25	& 19.48\%	& 19.18\% \\
+syr2k	& 28.02	& \textcolor{blue}{\textbf{23.57}}	& 18.00	& \textcolor{red}{\textbf{15.11}}	& 15.16	& 35.92\%	& 35.70\% \\
+covariance	& 41.86	& \textcolor{blue}{\textbf{16.83}}	& 16.86	& 15.79	& \textcolor{red}{\textbf{14.06}}	& 6.17\%	& 16.42\% \\
 \bottomrule
 \end{longtable}
 \end{document}

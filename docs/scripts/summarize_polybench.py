@@ -42,7 +42,7 @@ res_dict = {}
 
 headers = pd.read_csv(db_dir_list[0] + '/result.csv').columns.tolist()
 headers.append(f'\Delta_{{HypoT}}')
-headers.append(f'\Delta_{{HypoT+LinUCB}}')
+headers.append(f'\Delta_{{LinUCB}}')
 
 for i in range(len(db_dir_list)):
     pd_data = pd.read_csv(db_dir_list[i] + '/result.csv')
@@ -77,7 +77,7 @@ for header in headers:
     if header == 'Optimizers':
         table += f'\t& HypoT'
     elif header == 'parameters':
-        table += f'\t& HypoT+LinUCB'
+        table += f'\t& LinUCB'
     else:
         table += f'\t& {header}'
 
@@ -104,10 +104,10 @@ for case_name in result:
                 best_res = result[case_name][level]
 
     result[case_name][
-        best_level] = f'\\textcolor{{red}}{{\\textbf{{{result[case_name][best_level]:.2f}}}}}'
+        best_level] = f'\\textcolor{{red}}{{\\textbf{{{result[case_name][best_level]/1000:.2f}}}}}'
     compare_level = 'O2'
     result[case_name][
-        compare_level] = f'\\textcolor{{blue}}{{\\textbf{{{result[case_name][compare_level]:.2f}}}}}'
+        compare_level] = f'\\textcolor{{blue}}{{\\textbf{{{result[case_name][compare_level]/1000:.2f}}}}}'
 
     for level in result[case_name]:
         if level == 'Ofast':
@@ -115,7 +115,7 @@ for case_name in result:
         if 'Delta' in level or level in [best_level, compare_level]:
             table += f'\t& {result[case_name][level]}'
         else:
-            table += f'\t& {result[case_name][level]:.2f}'
+            table += f'\t& {result[case_name][level]/1000:.2f}'
 
     table += ' \\\\\n'
 
