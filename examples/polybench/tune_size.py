@@ -16,7 +16,7 @@ import yatuner
 import os
 
 cc = 'gcc'
-base = '-O0'
+base = '-Os'
 build_dir = './build_size'
 workspace_dir = './workspace_size'
 
@@ -67,8 +67,8 @@ for case_dir, case_name in benchmark_list:
         lm = '-lm'
 
         res = yatuner.utils.execute(
-            f'{cc} {options} {lm} polybench/utilities/polybench.c '
-            f'{case_dir}/{case_name}.c -o '
+            f'{cc} {options} polybench/utilities/polybench.c '
+            f'{case_dir}/{case_name}.c {lm} -o '
             f'{build_dir}/{case_name}.exe')
 
         if res['returncode'] != 0:
@@ -86,16 +86,16 @@ for case_dir, case_name in benchmark_list:
                           parameters,
                           perf,
                           workspace=f'{workspace_dir}/{case_name}.db',
-                          log_level=logging.INFO,
-                          norm_range=0.99)
+                          log_level=logging.DEBUG,
+                          norm_range=0.99,
+                          deterministic=True)
 
     logger.info(f'[bold]Performing Optimization on {case_dir}[/]')
 
     tuner.initialize()
-    tuner.test_run(num_samples=2, warmup=0)
-    tuner.hypotest_optimizers(num_samples=2)
-    tuner.hypotest_parameters(num_samples=2)
-    tuner.optimize(num_samples=2, num_epochs=60)
+    tuner.test_run(num_samples=1, warmup=0)
+    tuner.hypotest_optimizers(num_samples=1)
+    tuner.hypotest_parameters(num_samples=1)
+    tuner.optimize(num_samples=1, num_epochs=60)
 
-    tuner.run(num_samples=2)
-    tuner.plot_data()
+    tuner.run(num_samples=1)

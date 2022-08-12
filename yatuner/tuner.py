@@ -43,7 +43,8 @@ class Tuner:
                  call_perf: Callable[[], Dict[str, Any]] = None,
                  workspace='yatuner.db',
                  log_level=logging.DEBUG,
-                 norm_range=None) -> None:
+                 norm_range=None,
+                 deterministic=False) -> None:
         """A tuner.
 
         Args:
@@ -85,6 +86,7 @@ class Tuner:
         else:
             self.symmetrization = False
             self.norm_range = norm_range
+        self.deterministic = deterministic
 
     def initialize(self):
         if not os.path.isdir(self.workspace):
@@ -98,6 +100,12 @@ class Tuner:
             num_samples (int, optional): Times to run. Defaults to 200.
             warmup (int, optional): Times to warmup. Defaults to 50.
         """
+
+        if self.deterministic and num_samples != 1:
+            self.logger.warning(f"num_samples of {num_samples} "
+                                f"is not necessary for deterministic goal.")
+            num_samples = 1
+
         if os.path.exists(self.workspace + '/test_run.csv'):
             self.logger.info("using existing test run result.")
             pd_data = pd.read_csv(self.workspace + '/test_run.csv')
@@ -107,48 +115,58 @@ class Tuner:
             self.call_compile(None, None, None)
             self.exec_data = []
 
-            for i in track(range(warmup), description='  warmup'):
-                res = self.call_running()
-                self.logger.debug(f"warmup {i}/{warmup} result: {res}")
-
-            for _ in track(range(num_samples), description='test run'):
+            if self.deterministic:
                 res = self.call_running()
                 self.exec_data.append(res)
+            else:
+                for i in track(range(warmup), description='  warmup'):
+                    res = self.call_running()
+                    self.logger.debug(f"warmup {i}/{warmup} result: {res}")
+
+                for _ in track(range(num_samples), description='test run'):
+                    res = self.call_running()
+                    self.exec_data.append(res)
 
             pd_data = pd.DataFrame({'test_run': self.exec_data})
             pd_data.to_csv(self.workspace + '/test_run.csv', index=0)
 
-        if self.symmetrization:
-            self.exec_data.sort()
-            kernel = stats.gaussian_kde(self.exec_data)
-            maxima = optimize.minimize_scalar(lambda x: -kernel(x),
-                                              bounds=(np.min(self.exec_data),
-                                                      np.max(self.exec_data)),
-                                              method='bounded').x[0]
-            data_cnt = len(self.exec_data)
-            for i in range(data_cnt):
-                self.exec_data.append(maxima + maxima - self.exec_data[i])
+        if not self.deterministic:
+            if self.symmetrization:
+                self.exec_data.sort()
+                kernel = stats.gaussian_kde(self.exec_data)
+                maxima = optimize.minimize_scalar(
+                    lambda x: -kernel(x),
+                    bounds=(np.min(self.exec_data), np.max(self.exec_data)),
+                    method='bounded').x[0]
+                data_cnt = len(self.exec_data)
+                for i in range(data_cnt):
+                    self.exec_data.append(maxima + maxima - self.exec_data[i])
+            else:
+                self.exec_data = np.sort(
+                    self.exec_data
+                )[:int(len(self.exec_data) * self.norm_range)]
+
+            self.u = np.mean(self.exec_data)
+            self.std = np.std(self.exec_data)
+            kstest = stats.kstest(self.exec_data, 'norm', (self.u, self.std))
+
+            self.logger.info(
+                f"test run finished with u: {self.u:.2f}, std: {self.std:.2f}")
+
+            if kstest.pvalue < 0.05:
+                self.logger.info("test run ... [bold green]OK[/]")
+            else:
+                self.logger.warning(
+                    "[red]execution time disobey normal distribution[/]")
+
+            plt.clf()
+            plt.hist(self.exec_data, bins=50, density=True, label='test run')
+            plt.legend()
+            plt.savefig(self.workspace + "/test_run_distribution.png")
         else:
-            self.exec_data = np.sort(
-                self.exec_data)[:int(len(self.exec_data) * self.norm_range)]
-
-        self.u = np.mean(self.exec_data)
-        self.std = np.std(self.exec_data)
-        kstest = stats.kstest(self.exec_data, 'norm', (self.u, self.std))
-
-        self.logger.info(
-            f"test run finished with u: {self.u:.2f}, std: {self.std:.2f}")
-
-        if kstest.pvalue < 0.05:
-            self.logger.info("test run ... [bold green]OK[/]")
-        else:
-            self.logger.warning(
-                "[red]execution time disobey normal distribution[/]")
-
-        plt.clf()
-        plt.hist(self.exec_data, bins=50, density=True, label='test run')
-        plt.legend()
-        plt.savefig(self.workspace + "/test_run_distribution.png")
+            self.u = self.exec_data[0]
+            self.logger.info(
+                f"teste run finished with res: {self.exec_data[0]:.2f}")
 
     def hypotest_optimizers(self,
                             num_samples=10,
@@ -165,6 +183,11 @@ class Tuner:
             num_epochs (int, optional): optimization epoches after selection.
                 Defaults to 30.
         """
+
+        if self.deterministic and num_samples != 1:
+            self.logger.warning(f"num_samples of {num_samples} "
+                                f"is not necessary for deterministic goal.")
+            num_samples = 1
 
         if os.path.exists(self.workspace + '/selected_optimizers.txt'):
             self.logger.info("using existing selected optimizers.")
@@ -184,8 +207,7 @@ class Tuner:
 
             samples = np.zeros(num_samples)
             err = False
-
-            for j in range(num_samples):
+            if self.deterministic:
                 try:
                     res = self.call_running()
                 except RuntimeError as err:
@@ -194,24 +216,46 @@ class Tuner:
                     err = True
                     break
 
-                samples[j] = res
+                samples[0] = res
                 hypotest_exec_data.append(res)
+
+            else:
+                for j in range(num_samples):
+                    try:
+                        res = self.call_running()
+                    except RuntimeError as err:
+                        self.logger.error(
+                            f"[red]runtime error for {optimizer}[/]")
+                        self.logger.exception(err)
+                        err = True
+                        break
+
+                    samples[j] = res
+                    hypotest_exec_data.append(res)
 
             if err:
                 continue
 
-            samples_mean = samples.mean()
-            z = (samples_mean - self.u) / (self.std / np.sqrt(len(samples)))
-            p = 2 * stats.norm.sf(abs(z))
-            t = stats.ttest_1samp(samples, self.u).pvalue
+            if not self.deterministic:
+                samples_mean = samples.mean()
+                z = (samples_mean - self.u) / (self.std /
+                                               np.sqrt(len(samples)))
+                p = 2 * stats.norm.sf(abs(z))
+                t = stats.ttest_1samp(samples, self.u).pvalue
 
-            self.logger.debug(f"{i}/{len(self.optimizers)} {optimizer} "
-                              f"u: {self.u:.2f} -> {samples_mean:.2f}, "
-                              f"p: {p:.2f}, t: {t:.2f}")
+                self.logger.debug(f"{i}/{len(self.optimizers)} {optimizer} "
+                                  f"u: {self.u:.2f} -> {samples_mean:.2f}, "
+                                  f"p: {p:.2f}, t: {t:.2f}")
 
-            if (p < z_threshold or t < t_threshold) and z < 0:
-                self.selected_optimizers.append(optimizer)
-                self.logger.info(f"[green]{optimizer} is selected[/]")
+                if (p < z_threshold or t < t_threshold) and z < 0:
+                    self.selected_optimizers.append(optimizer)
+                    self.logger.info(f"[green]{optimizer} is selected[/]")
+            else:
+                self.logger.debug(f"{i}/{len(self.optimizers)} {optimizer} "
+                                  f"res: {samples[0]:.2f}")
+                if samples[0] < self.u:
+                    self.selected_optimizers.append(optimizer)
+                    self.logger.info(f"[green]{optimizer} is selected[/]")
 
         self.logger.info(
             f"{len(self.selected_optimizers)} optimizers selected")
@@ -234,9 +278,12 @@ class Tuner:
                 return inf
 
             res = 0
-            for _ in track(range(num_samples), f'epoch {cnt:<5}'):
-                res += self.call_running()
-            res /= num_samples
+            if self.deterministic:
+                res = self.call_running()
+            else:
+                for _ in track(range(num_samples), f'epoch {cnt:<5}'):
+                    res += self.call_running()
+                res /= num_samples
 
             self.logger.debug(f'{cnt}/{num_epochs} result: {res:.2f}')
 
@@ -272,24 +319,26 @@ class Tuner:
             f.writelines(
                 [optimizer + '\n' for optimizer in self.selected_optimizers])
 
-        plt.clf()
-        # bin_min = min(np.min(self.exec_data), np.min(hypotest_exec_data))
-        # bin_max = max(np.max(self.exec_data), np.max(hypotest_exec_data))
-        # bins = np.arange(bin_min, bin_max + 500, 500)
-        plt.hist(
-            self.exec_data,
-            #  bins=bins,
-            density=True,
-            alpha=0.5,
-            label='test run')
-        plt.hist(
-            hypotest_exec_data,
-            #  bins=bins,
-            density=True,
-            alpha=0.5,
-            label='hypotest-optimizers')
-        plt.legend()
-        plt.savefig(self.workspace + "/hypotest_optimizers_distribution.png")
+        if not self.deterministic:
+            plt.clf()
+            # bin_min = min(np.min(self.exec_data), np.min(hypotest_exec_data))
+            # bin_max = max(np.max(self.exec_data), np.max(hypotest_exec_data))
+            # bins = np.arange(bin_min, bin_max + 500, 500)
+            plt.hist(
+                self.exec_data,
+                #  bins=bins,
+                density=True,
+                alpha=0.5,
+                label='test run')
+            plt.hist(
+                hypotest_exec_data,
+                #  bins=bins,
+                density=True,
+                alpha=0.5,
+                label='hypotest-optimizers')
+            plt.legend()
+            plt.savefig(self.workspace +
+                        "/hypotest_optimizers_distribution.png")
 
     def hypotest_parameters(self, num_samples=10, t_threshold=0.05):
         """Hypothesis test for parameters.
@@ -299,6 +348,10 @@ class Tuner:
                 Defaults to 10.
             t_threshold (float, optional): T threshold. Defaults to 0.05.
         """
+        if self.deterministic and num_samples != 1:
+            self.logger.warning(f"num_samples of {num_samples} "
+                                f"is not necessary for deterministic goal.")
+            num_samples = 1
 
         if os.path.exists(self.workspace + '/selected_parameters.txt'):
             self.logger.info("using existing selected parameters")
@@ -338,9 +391,13 @@ class Tuner:
                 self.logger.warning(
                     f"[red]compile timeout with {parameter}[/]")
 
-            for j in range(num_samples):
+            if self.deterministic:
                 res = self.call_running()
-                samples_min[j] = res
+                samples_min[0] = res
+            else:
+                for j in range(num_samples):
+                    res = self.call_running()
+                    samples_min[j] = res
 
             samples_max = np.zeros(num_samples)
             try:
@@ -354,22 +411,35 @@ class Tuner:
                 self.logger.warning(
                     f"[red]compile timeout with {parameter}[/]")
 
-            for j in range(num_samples):
+            if self.deterministic:
                 res = self.call_running()
-                samples_max[j] = res
+                samples_max[0] = res
+            else:
+                for j in range(num_samples):
+                    res = self.call_running()
+                    samples_max[j] = res
 
-            l = stats.levene(samples_min, samples_max).pvalue
-            p = stats.ttest_ind(samples_min, samples_max,
-                                equal_var=(l > 0.05)).pvalue
+            if not self.deterministic:
+                l = stats.levene(samples_min, samples_max).pvalue
+                p = stats.ttest_ind(samples_min,
+                                    samples_max,
+                                    equal_var=(l > 0.05)).pvalue
 
-            self.logger.debug(f"{i}/{len(self.parameters)} {parameter} "
-                              f"min: {np.mean(samples_min):.2f}, "
-                              f"max: {np.mean(samples_max):.2f} "
-                              f"l: {l:.2f}, p: {p:.2f}")
+                self.logger.debug(f"{i}/{len(self.parameters)} {parameter} "
+                                  f"min: {np.mean(samples_min):.2f}, "
+                                  f"max: {np.mean(samples_max):.2f} "
+                                  f"l: {l:.2f}, p: {p:.2f}")
 
-            if p < t_threshold:
-                self.selected_parameters.append(parameter)
-                self.logger.info(f"[green]{parameter} is selected[/]")
+                if p < t_threshold:
+                    self.selected_parameters.append(parameter)
+                    self.logger.info(f"[green]{parameter} is selected[/]")
+            else:
+                self.logger.debug(f"{i}/{len(self.parameters)} {parameter} "
+                                  f"min: {samples_min[0]:.2f} "
+                                  f"max: {samples_max[0]:.2f}")
+                if samples_min[0] < self.u or samples_max[0] < self.u:
+                    self.selected_parameters.append(parameter)
+                    self.logger.info(f"[green]{parameter} is selected[/]")
 
             i += 1
 
@@ -387,6 +457,15 @@ class Tuner:
                         nth_choice=3,
                         metric='cpu-cycles') -> None:
         """Optimize selected parameters with linUCB."""
+        if self.deterministic and num_samples != 1:
+            self.logger.warning(f"num_samples of {num_samples} "
+                                f"is not necessary for deterministic goal.")
+            num_samples = 1
+
+        if self.deterministic:
+            self.logger.info("using bayesian instead of LinUCB.")
+            self.optimize(num_samples=num_samples, num_epochs=num_samples)
+            return
 
         if self.call_perf == None:
             self.logger.error("call_perf not found")
@@ -493,6 +572,10 @@ class Tuner:
 
     def optimize(self, num_samples=10, num_epochs=60) -> None:
         """Optimize selected parameters with bayesian."""
+        if self.deterministic and num_samples != 1:
+            self.logger.warning(f"num_samples of {num_samples} "
+                                f"is not necessary for deterministic goal.")
+            num_samples = 1
 
         if os.path.exists(self.workspace + '/optimized_parameters.txt'):
             self.logger.info("using existing optimized parameters.")
@@ -520,9 +603,12 @@ class Tuner:
             self.logger.error(f"[red]compile timeout[/]")
 
         res = 0
-        for _ in track(range(num_samples), "before optimization"):
-            res += self.call_running()
-        res /= num_samples
+        if self.deterministic:
+            res = self.call_running()
+        else:
+            for _ in track(range(num_samples), "before optimization"):
+                res += self.call_running()
+            res /= num_samples
         self.logger.info(f"execution result before optimize: {res}")
 
         if os.path.exists(self.workspace + '/selected_parameters.txt'):
@@ -559,9 +645,12 @@ class Tuner:
                 return inf
 
             res = 0
-            for _ in track(range(num_samples), f'epoch {cnt:<5}'):
-                res += self.call_running()
-            res /= num_samples
+            if self.deterministic:
+                res = self.call_running()
+            else:
+                for _ in track(range(num_samples), f'epoch {cnt:<5}'):
+                    res += self.call_running()
+                res /= num_samples
 
             self.logger.debug(f'{cnt}/{num_epochs} result: {res:.2f}')
 
@@ -603,12 +692,17 @@ class Tuner:
         Args:
             num_samples (int, optional): Sampling times. Defaults to 10.
         """
+        if self.deterministic and num_samples != 1:
+            self.logger.warning(f"num_samples of {num_samples} "
+                                f"is not necessary for deterministic goal.")
+            num_samples = 1
 
         if os.path.exists(self.workspace + '/result.csv'):
             self.logger.info("aready done.")
             return
 
         samples_ofast = np.zeros(num_samples)
+        samples_os = np.zeros(num_samples)
         samples_o0 = np.zeros(num_samples)
         samples_o1 = np.zeros(num_samples)
         samples_o2 = np.zeros(num_samples)
@@ -617,29 +711,58 @@ class Tuner:
         samples_parameters = np.zeros(num_samples)
 
         self.call_compile(None, None, '-Ofast')
-        for i in track(range(num_samples), description='-Ofast'):
+        if self.deterministic:
             res = self.call_running()
-            samples_ofast[i] = res
+            samples_ofast[0] = res
+        else:
+            for i in track(range(num_samples), description='-Ofast'):
+                res = self.call_running()
+                samples_ofast[i] = res
 
-        # self.call_compile(None, None, '-O0')
-        # for i in track(range(num_samples), description='   -O0'):
-        #     res = self.call_running()
-        #     samples_o0[i] = t
+        self.call_compile(None, None, '-Os')
+        if self.deterministic:
+            res = self.call_running()
+            samples_os[0] = res
+        else:
+            for i in track(range(num_samples), description='   -Os'):
+                res = self.call_running()
+                samples_os[i] = res
+
+        self.call_compile(None, None, '-O0')
+        if self.deterministic:
+            res = self.call_running()
+            samples_o0[0] = res
+        else:
+            for i in track(range(num_samples), description='   -O0'):
+                res = self.call_running()
+                samples_o0[i] = res
 
         self.call_compile(None, None, '-O1')
-        for i in track(range(num_samples), description='   -O1'):
+        if self.deterministic:
             res = self.call_running()
-            samples_o1[i] = res
+            samples_o1[0] = res
+        else:
+            for i in track(range(num_samples), description='   -O1'):
+                res = self.call_running()
+                samples_o1[i] = res
 
         self.call_compile(None, None, '-O2')
-        for i in track(range(num_samples), description='   -O2'):
+        if self.deterministic:
             res = self.call_running()
-            samples_o2[i] = res
+            samples_o2[0] = res
+        else:
+            for i in track(range(num_samples), description='   -O2'):
+                res = self.call_running()
+                samples_o2[i] = res
 
         self.call_compile(None, None, '-O3')
-        for i in track(range(num_samples), description='   -O3'):
+        if self.deterministic:
             res = self.call_running()
-            samples_o3[i] = res
+            samples_o3[0] = res
+        else:
+            for i in track(range(num_samples), description='   -O3'):
+                res = self.call_running()
+                samples_o3[i] = res
 
         if os.path.exists(self.workspace + '/selected_optimizers.txt'):
             self.selected_optimizers = []
@@ -656,9 +779,13 @@ class Tuner:
             pass
 
         self.call_compile(self.selected_optimizers, None, None)
-        for i in track(range(num_samples), description='optimizers'):
+        if self.deterministic:
             res = self.call_running()
-            samples_optimizers[i] = res
+            samples_optimizers[0] = res
+        else:
+            for i in track(range(num_samples), description='optimizers'):
+                res = self.call_running()
+                samples_optimizers[i] = res
 
         if os.path.exists(self.workspace + '/optimized_parameters.txt'):
             self.optimized_parameters = {}
@@ -676,47 +803,79 @@ class Tuner:
 
         self.call_compile(self.selected_optimizers, self.optimized_parameters,
                           None)
-        for i in track(range(num_samples), description='parameters'):
+        if self.deterministic:
             res = self.call_running()
-            samples_parameters[i] = res
+            samples_parameters[0] = res
+        else:
+            for i in track(range(num_samples), description='parameters'):
+                res = self.call_running()
+                samples_parameters[i] = res
 
-        bin_min = min(np.min(samples_o1), np.min(samples_o2),
-                      np.min(samples_o3), np.min(samples_ofast),
-                      np.min(samples_optimizers), np.min(samples_parameters))
-        bin_max = max(np.max(samples_o1), np.max(samples_o2),
-                      np.max(samples_o3), np.max(samples_ofast),
-                      np.max(samples_optimizers), np.max(samples_parameters))
-        bins = np.arange(bin_min, bin_max + 500, 500)
+        if not self.deterministic:
+            bin_min = min(np.min(samples_os), np.min(samples_o0),
+                          np.min(samples_o1), np.min(samples_o2),
+                          np.min(samples_o3), np.min(samples_ofast),
+                          np.min(samples_optimizers),
+                          np.min(samples_parameters))
+            bin_max = max(np.max(samples_os), np.max(samples_o0),
+                          np.max(samples_o1), np.max(samples_o2),
+                          np.max(samples_o3), np.max(samples_ofast),
+                          np.max(samples_optimizers),
+                          np.max(samples_parameters))
+            bins = np.arange(bin_min, bin_max + 500, 500)
 
-        plt.clf()
-        # plt.hist(samples_o0, density=True, alpha=0.5, label='O0')
-        plt.hist(samples_o1, bins=bins, density=True, alpha=0.5, label='O1')
-        plt.hist(samples_o2, bins=bins, density=True, alpha=0.5, label='O2')
-        plt.hist(samples_o3, bins=bins, density=True, alpha=0.5, label='O3')
-        plt.hist(samples_ofast,
-                 bins=bins,
-                 density=True,
-                 alpha=0.5,
-                 label='Ofast')
-        plt.hist(samples_optimizers,
-                 bins=bins,
-                 density=True,
-                 alpha=0.5,
-                 label='Optimizers')
-        plt.hist(samples_parameters,
-                 bins=bins,
-                 density=True,
-                 alpha=0.5,
-                 label='Parameters')
-        plt.xlabel("Time/Tick")
-        plt.ylabel("Density")
-        plt.legend()
-        plt.savefig(self.workspace + "/result.png")
+            plt.clf()
+            plt.hist(samples_o0,
+                     bins=bins,
+                     density=True,
+                     alpha=0.5,
+                     label='O0')
+            plt.hist(samples_o1,
+                     bins=bins,
+                     density=True,
+                     alpha=0.5,
+                     label='O1')
+            plt.hist(samples_o2,
+                     bins=bins,
+                     density=True,
+                     alpha=0.5,
+                     label='O2')
+            plt.hist(samples_o3,
+                     bins=bins,
+                     density=True,
+                     alpha=0.5,
+                     label='O3')
+            plt.hist(samples_os,
+                     bins=bins,
+                     density=True,
+                     alpha=0.5,
+                     label='Os')
+            plt.hist(samples_ofast,
+                     bins=bins,
+                     density=True,
+                     alpha=0.5,
+                     label='Ofast')
+            plt.hist(samples_optimizers,
+                     bins=bins,
+                     density=True,
+                     alpha=0.5,
+                     label='Optimizers')
+            plt.hist(samples_parameters,
+                     bins=bins,
+                     density=True,
+                     alpha=0.5,
+                     label='Parameters')
+            plt.xlabel("Time/Tick")
+            plt.ylabel("Density")
+            plt.legend()
+            plt.savefig(self.workspace + "/result.png")
 
         pd_data = pd.DataFrame({
+            'O0': samples_o0,
             'O1': samples_o1,
             'O2': samples_o2,
             'O3': samples_o3,
+            'Os': samples_os,
             'Ofast': samples_ofast,
             'Optimizers': samples_optimizers,
             'Parameters': samples_parameters
@@ -724,17 +883,20 @@ class Tuner:
         pd_data.to_csv(self.workspace + "/result.csv", index=0)
 
         mean_ofast = samples_ofast.mean()
-        # mean_o0 = samples_o0.mean()
+        mean_os = samples_os.mean()
+        mean_o0 = samples_o0.mean()
         mean_o1 = samples_o1.mean()
         mean_o2 = samples_o2.mean()
         mean_o3 = samples_o3.mean()
         mean_optimizers = samples_optimizers.mean()
         mean_parameters = samples_parameters.mean()
 
-        minimal = min(mean_ofast, mean_o1, mean_o2, mean_o3, mean_optimizers,
-                      mean_parameters)
+        minimal = min(mean_ofast, mean_os, mean_o0, mean_o1, mean_o2, mean_o3,
+                      mean_optimizers, mean_parameters)
 
         score_ofast = 100 * minimal / mean_ofast
+        score_os = 100 * minimal / mean_os
+        score_o0 = 100 * minimal / mean_o0
         score_o1 = 100 * minimal / mean_o1
         score_o2 = 100 * minimal / mean_o2
         score_o3 = 100 * minimal / mean_o3
@@ -749,10 +911,12 @@ class Tuner:
         table.add_column(f"Result", style="cyan")
         table.add_column("Score", style="green")
         table.add_column("Delta", style="green")
-        table.add_row("Ofast", f"{mean_ofast:.2f}", f"{score_ofast:.2f}", "")
+        table.add_row("O0", f"{mean_o0:.2f}", f"{score_o0:.2f}", "")
         table.add_row("O1", f"{mean_o1:.2f}", f"{score_o1:.2f}", "")
         table.add_row("O2", f"{mean_o2:.2f}", f"{score_o2:.2f}", "")
         table.add_row("O3", f"{mean_o3:.2f}", f"{score_o3:.2f}", "")
+        table.add_row("Ofast", f"{mean_ofast:.2f}", f"{score_ofast:.2f}", "")
+        table.add_row("Os", f"{mean_os:.2f}", f"{score_os:.2f}", "")
         table.add_row("Optimizers", f"{mean_optimizers:.2f}",
                       f"{score_optimizers:.2f}", f"{delta_optimizers:.2f}%")
         table.add_row("Parameters", f"{mean_parameters:.2f}",
@@ -763,6 +927,9 @@ class Tuner:
 
     def plot_data(self) -> None:
         """Plot result."""
+        if self.deterministic:
+            self.logger.warning("skipping plotting data.")
+            return
 
         if not os.path.exists(self.workspace + '/result.csv'):
             self.logger.error("No data found.")
