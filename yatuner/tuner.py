@@ -437,7 +437,7 @@ class Tuner:
                 self.logger.debug(f"{i}/{len(self.parameters)} {parameter} "
                                   f"min: {samples_min[0]:.2f} "
                                   f"max: {samples_max[0]:.2f}")
-                if samples_min[0] < self.u or samples_max[0] < self.u:
+                if samples_min[0] != samples_max[0]:
                     self.selected_parameters.append(parameter)
                     self.logger.info(f"[green]{parameter} is selected[/]")
 
