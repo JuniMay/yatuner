@@ -25,6 +25,37 @@ Also, `yatuner.utils` includes tools that might be necessary for use, here is a 
 
 These tools can be used in the tuning script, see `examples` for details.
 
+## Architecture
+
+```mermaid
+graph TB
+subgraph User Interface
+    A[(Auto-generated Tuning Script)] -- manually add details --> B[(Final Tuning Script)]
+end
+B ==> C
+subgraph Tuning Process
+    C(Auto-fetching compiler options) --> D(Hypothesis Test for Optimizers) 
+    D --> E(Tuning Optimizers)
+    E --> F(Hypothesis Test for Parameters)
+    F --> G(Tuning Parameters)
+    G -- run test and compare --> I[(Tuning Report)]
+end
+G -- store --> H[(Tuned Options)]
+E -- store --> H
+subgraph Tuner
+    J([LinUCB Optimizer]) -.-> G
+    K([Bayesian Optimizer]) -.-> G
+    K -.-> E
+end
+subgraph Pre-defined Functions
+    B == defines ==> L([comp])
+    B == defines ==> M([run])
+    B == defines ==> N([perf])
+end
+N -.-> J
+L & M -.-> J & K
+```
+
 ## About
 
 This is a project for the OS competition 2022, proj105 problem, see [this](https://github.com/oscomp/proj105-auto-tune-for-compiler) for further information.

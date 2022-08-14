@@ -25,6 +25,37 @@
 
 这些工具可以在调优脚本中使用以加快开发速度，详见 `examples` 中具体的使用例子.
 
+## 架构
+
+```mermaid
+graph TB
+subgraph User Interface
+    A[(Auto-generated Tuning Script)] -- manually add details --> B[(Final Tuning Script)]
+end
+B ==> C
+subgraph Tuning Process
+    C(Auto-fetching compiler options) --> D(Hypothesis Test for Optimizers) 
+    D --> E(Tuning Optimizers)
+    E --> F(Hypothesis Test for Parameters)
+    F --> G(Tuning Parameters)
+    G -- run test and compare --> I[(Tuning Report)]
+end
+G -- store --> H[(Tuned Options)]
+E -- store --> H
+subgraph Tuner
+    J([LinUCB Optimizer]) -.-> G
+    K([Bayesian Optimizer]) -.-> G
+    K -.-> E
+end
+subgraph Pre-defined Functions
+    B == defines ==> L([comp])
+    B == defines ==> M([run])
+    B == defines ==> N([perf])
+end
+N -.-> J
+L & M -.-> J & K
+```
+
 ## 关于
 
 本项目是对 2022全国大学生操作系统比赛功能赛道 proj105 题目的实现，详见 [proj105 repo](https://github.com/oscomp/proj105-auto-tune-for-compiler)。
