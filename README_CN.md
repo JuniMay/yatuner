@@ -29,28 +29,28 @@
 
 ```mermaid
 graph TB
-subgraph User Interface
-    A[(Auto-generated Tuning Script)] -- manually add details --> B[(Final Tuning Script)]
+subgraph 用户界面
+    A[(自动生成调优脚本)] -- 手动微调 --> B[(调优脚本)]
 end
 B ==> C
-subgraph Tuning Process
-    C(Auto-fetching compiler options) --> D(Hypothesis Test for Optimizers) 
-    D --> E(Tuning Optimizers)
-    E --> F(Hypothesis Test for Parameters)
-    F --> G(Tuning Parameters)
-    G -- run test and compare --> I[(Tuning Report)]
+subgraph 调优过程
+    C(自动获取编译器选项) --> D(对 Optimizers 假设检验) 
+    D --> E(对 Optimizers 调优)
+    E --> F(对 Parameters 假设检验)
+    F --> G(对 Parameters 调优)
+    G -- 运行测试并比较 --> I[(调优报告)]
 end
-G -- store --> H[(Tuned Options)]
-E -- store --> H
-subgraph Tuner
-    J([LinUCB Optimizer]) -.-> G
-    K([Bayesian Optimizer]) -.-> G
+G -- 存储 --> H[(调优结果)]
+E -- 存储 --> H
+subgraph 调优器
+    J([LinUCB 优化器]) -.-> G
+    K([贝叶斯优化器]) -.-> G
     K -.-> E
 end
-subgraph Pre-defined Functions
-    B == defines ==> L([comp])
-    B == defines ==> M([run])
-    B == defines ==> N([perf])
+subgraph 预定义函数
+    B == 定义 ==> L([comp])
+    B == 定义 ==> M([run])
+    B == 定义 ==> N([perf])
 end
 N -.-> J
 L & M -.-> J & K
