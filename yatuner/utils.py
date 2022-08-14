@@ -168,10 +168,23 @@ def fetch_src_feature(src: str,
 
 
 def fetch_arch() -> str:
+    """Fetch machine architecture information
+
+    Returns:
+        str: The architecture
+    """
     return platform.machine()
 
 
 def fetch_gcc_optimizers(cc='gcc') -> List[str]:
+    """Fetch gcc optimizers
+
+    Args:
+        cc (str, optional): Specified gcc binary. Defaults to 'gcc'.
+
+    Returns:
+        List[str]: Optimizers
+    """
     optimizers = []
 
     opt = execute(f'{cc} --help=optimizers')['stdout']
@@ -182,6 +195,14 @@ def fetch_gcc_optimizers(cc='gcc') -> List[str]:
 
 
 def fetch_gcc_version(cc='gcc') -> Tuple[int, int, int]:
+    """Fetch gcc version.
+
+    Args:
+        cc (str, optional): Specified gcc binary. Defaults to 'gcc'.
+
+    Returns:
+        Tuple[int, int, int]: gcc version in triplet.
+    """
     version = None
     ver = re.search(r'([0-9]+)[.]([0-9]+)[.]([0-9]+)',
                     execute(f'{cc} --version')['stdout'])
@@ -192,7 +213,22 @@ def fetch_gcc_version(cc='gcc') -> Tuple[int, int, int]:
 
 
 def fetch_gcc_parameters(cc='gcc',
-                         params_def=None) -> Dict[str, Tuple[int, int, int]]:
+                         params_def: str = None
+                         ) -> Dict[str, Tuple[int, int, int]]:
+    """Fetch gcc parameters and its range
+
+    Args:
+        cc (str, optional): Specified gcc binary. Defaults to 'gcc'.
+        params_def (str, optional): `params.def` of gcc source for version 
+            earlier then 10. Defaults to None.
+
+    Raises:
+        RuntimeError: If `params.def` is not given for gcc earlier than 10.
+
+    Returns:
+        Dict[str, Tuple[int, int, int]]: Parameters in format of 
+            `param: (min, max, default)`
+    """
 
     version = fetch_gcc_version(cc)
 
@@ -201,7 +237,7 @@ def fetch_gcc_parameters(cc='gcc',
     if version[0] > 9:
         params_str = execute(f'{cc} -Q --help=params ')['stdout']
         regex = r'^  --param=([a-z-]+)=(<[0-9]+,[0-9]+>)?\s+([0-9]+)'
-        
+
         for param, r, default in re.findall(regex, params_str, re.M):
             if r == '':
                 params[param] = (0, int(default) * 10, int(default))
@@ -247,15 +283,34 @@ def fetch_gcc_parameters(cc='gcc',
 
     return params
 
-def fetch_gcc_enabled_optimizers(cc='gcc', options='-O3'):
+
+def fetch_gcc_enabled_optimizers(cc='gcc', options='-O3') -> List[str]:
+    """Fetch enabled optimizers of certain options
+
+    Args:
+        cc (str, optional): Specified gcc binary. Defaults to 'gcc'.
+        options (str, optional): Options to look into. Defaults to '-O3'.
+
+    Returns:
+        List[str]: Enabled optimizers.
+    """
     raw = execute(f'{cc} {options} -Q --help=optimizers')['stdout']
     regex = r'(-f[a-z0-9-]+)\s+(\[enabled\]|\[disabled\])'
     optimizers = []
     for optimizer, status in re.findall(regex, raw):
         if status == '[enabled]':
             optimizers.append(optimizer)
-            
+
     return optimizers
 
+
 def fetch_size(filename: str) -> int:
+    """Fetch file size
+
+    Args:
+        filename (str): Path to file
+
+    Returns:
+        int: File size in bytes.
+    """
     return os.path.getsize(filename)
