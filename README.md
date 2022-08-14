@@ -25,14 +25,35 @@ Also, `yatuner.utils` includes tools that might be necessary for use, here is a 
 
 These tools can be used in the tuning script, see `examples` for details.
 
+The tuning process and relative methods and their functionalities are listed as below.
+
+| Method                      | Functionality                              |
+| --------------------------- | ------------------------------------------ |
+| `tuner.initialize`          | Initialize workspace                       |
+| `tuner.test_run`            | Doing an initial test run                  |
+| `tuner.hypotest_optimizers` | Hypothesis test for optimizers             |
+| `tuner.hypotest_parameters` | Hypothesis test for parameters             |
+| `tuner.optimize`            | Tune parameters with Bayesian Optimization |
+| `tuner.optimize_linUCB`     | Tune parameters with LinUCB                |
+| `tuner.run`                 | Run final test and generate result         |
+| `tuner.plot_data`           | Plot result in violin graph                |
+
+## Usage
+
+1. Install yaTuner.
+2. Auto-generate tuning script with `yatuner -g <filename>`.
+3. Manually modify tuning script and add details.
+4. Run tuning script with `python <filename>`.
+
 ## Architecture
 
 ```mermaid
 graph TB
 subgraph User Interface
+    O([yaTuner]) --> A
     A[(Auto-generated Tuning Script)] -- manually add details --> B[(Final Tuning Script)]
 end
-B ==> C
+B == run ==> C
 subgraph Tuning Process
     C(Auto-fetching compiler options) --> D(Hypothesis Test for Optimizers) 
     D --> E(Tuning Optimizers)
@@ -55,6 +76,10 @@ end
 N -.-> J
 L & M -.-> J & K
 ```
+
+## License
+
+yaTuner is licensed under Mulan PSL v2. See [LICENSE](LICENSE) for more details.
 
 ## About
 

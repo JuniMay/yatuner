@@ -59,10 +59,12 @@ class Tuner:
                 program, used in linUCB. Defaults to None.
             workspace (str, optional): Directory to store output files. 
                 Defaults to 'yatuner.db'.
-            log_level (_type_, optional): Log level. Defaults to logging.DEBUG.
-            norm_range (_type_, optional): Cut the data of test run to get more 
+            log_level (optional): Log level. Defaults to logging.DEBUG.
+            norm_range (float, optional): Cut the data of test run to get more 
                 accurate result, None if doing a symmetrization. 
                 Defaults to None.
+            deterministic (bool): False if the result of `call_compile` is 
+                random to a certain extent, otherwise True. Defaults to False.
         """
 
         logging.basicConfig(format='[ %(name)s ] %(message)s',

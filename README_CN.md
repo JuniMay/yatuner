@@ -4,7 +4,7 @@
 
 一个编译器自动调优器。
 
-## 开始使用 yaTuner
+## 开始
 
 使用 `make init` 可以创建一个虚拟环境，所有例子都位于 `examples` 目录下。
 
@@ -25,14 +25,35 @@
 
 这些工具可以在调优脚本中使用以加快开发速度，详见 `examples` 中具体的使用例子.
 
+优化过程及有关方法及其功能总结如下表。
+
+| 方法                          | 功能                        |
+| --------------------------- | ------------------------- |
+| `tuner.initialize`          | 初始化工作区                    |
+| `tuner.test_run`            | 预测试运行                     |
+| `tuner.hypotest_optimizers` | 对 optimizers 假设检验         |
+| `tuner.hypotest_parameters` | 对 parameters 假设检验         |
+| `tuner.optimize`            | 使用贝叶斯优化对 parameters 调优    |
+| `tuner.optimize_linUCB`     | 使用 LinUCB 对 parameters 调优 |
+| `tuner.run`                 | 测试运行并生成结果                 |
+| `tuner.plot_data`           | 生成结果小提琴图                  |
+
+## 使用
+
+1. 安装 yatuner.
+2. 使用 `yatuner -g <filename>` 自动生成初始调优脚本.
+3. 手动对调优脚本进行微调.
+4. 使用 `python <filename>` 运行调优脚本.
+
 ## 架构
 
 ```mermaid
 graph TB
 subgraph 用户界面
+    O([yaTuner]) --> A
     A[(自动生成调优脚本)] -- 手动微调 --> B[(调优脚本)]
 end
-B ==> C
+B == 运行 ==> C
 subgraph 调优过程
     C(自动获取编译器选项) --> D(对 Optimizers 假设检验) 
     D --> E(对 Optimizers 调优)
@@ -55,6 +76,10 @@ end
 N -.-> J
 L & M -.-> J & K
 ```
+
+## 许可协议
+
+yaTuner 使用 Mulan PSL v2 许可证，见 [LICENSE](LICENSE)。
 
 ## 关于
 
