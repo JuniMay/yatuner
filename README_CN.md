@@ -1,3 +1,5 @@
+[English](README.md) | 简体中文
+
 # yaTuner: 编译器自动调优器
 
 ## 开始使用 yaTuner

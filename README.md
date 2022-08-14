@@ -1,3 +1,5 @@
+English | [简体中文](README_CN.md)
+
 # yaTuner: yet another auto tuner for compilers
 
 ## Getting Started
