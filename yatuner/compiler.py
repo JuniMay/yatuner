@@ -105,7 +105,7 @@ class Gcc(Compiler):
         params_str, _ = subprocess.Popen([self.cc, '--help=params'],
                                          stdout=subprocess.PIPE).communicate()
 
-        regex = r'^  --param=([a-z-]+)'  # TODO: fix for gcc-10
+        regex = r'^  --param=([a-z-]+)'
 
         if (self.fetch_version()[0] < 10):
             regex = r'^  ([a-z-]+)'
@@ -160,7 +160,6 @@ class Gcc(Compiler):
             raise RuntimeError(res['stderr'])
 
     def filter_options(self) -> None:
-        # TODO
         raise NotImplementedError()
 
     def fetch_execute_cmd(self) -> str:

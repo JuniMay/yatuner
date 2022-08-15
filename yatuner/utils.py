@@ -27,7 +27,7 @@ def execute(command) -> Dict[str, Any]:
         command: Command to be executed.
 
     """
-    # TODO: time & memory limit
+
     p = subprocess.Popen(command,
                          shell=True,
                          stdout=subprocess.PIPE,
@@ -67,13 +67,14 @@ def fetch_perf_stat(command) -> Dict[str, Any]:
         ' -e context-switches '
         ' -e cpu-clock '
         ' -e cpu-migrations '
+        ' -e dummy '
         ' -e emulation-faults '
         ' -e major-faults '
         ' -e minor-faults '
         ' -e page-faults '
         ' -e task-clock '
-        ' -e topdown-retiring '
-        + command)  # TODO: auto detect events
+        ' -e duration_time '
+        + command)
 
     res = execute(perf_command)
 
@@ -135,7 +136,7 @@ def fetch_src_feature(src: str,
     try:
         generate_llvm(src, llvm_ir, llvm_compiler)
     except RuntimeError as err:
-        print('[ ERROR ] llvm-ir: ', err)  # TODO: print -> log
+        print('[ ERROR ] llvm-ir: ', err)
 
     try:
         vec = ir2vec(llvm_ir, outfile)
