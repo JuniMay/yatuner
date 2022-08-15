@@ -16,6 +16,9 @@
 import logging
 import pathlib
 import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 from rich.logging import RichHandler
 
 logging.basicConfig(
@@ -123,3 +126,43 @@ table += f'\\bottomrule\n\\end{{longtable}}\n\\end{{document}}'
 
 with open('docs/polybench_summary.tex', 'w', encoding='utf-8') as file:
     file.write(table)
+
+df = res_pd_data
+df = df.drop([f'\Delta_{{HypoT}}', f'\Delta_{{LinUCB}}', 'Ofast'])
+df = df.rename({'Optimizers': 'HypoT', 'parameters': 'LinUCB'})
+print(df)
+df_norm = df.apply(lambda x: x / np.max(x))
+print(df_norm)
+plt.clf()
+fig = df_norm.T[0:9].plot.bar(figsize=(10,5), rot=1,
+                               width=0.7,
+                               color={
+                                   'O1': 'blue',
+                                   'O2': 'dodgerblue',
+                                   'O3': 'royalblue',
+                                   'HypoT': 'red',
+                                   'LinUCB': 'coral'
+                               })
+plt.savefig('docs/polybench1.png', pad_inches=0, bbox_inches='tight')
+plt.clf()
+fig = df_norm.T[10:19].plot.bar(figsize=(10,5), rot=1,
+                                 width=0.7,
+                                 color={
+                                     'O1': 'blue',
+                                     'O2': 'dodgerblue',
+                                     'O3': 'royalblue',
+                                     'HypoT': 'red',
+                                     'LinUCB': 'coral'
+                                 })
+plt.savefig('docs/polybench2.png', pad_inches=0, bbox_inches='tight')
+plt.clf()
+fig = df_norm.T[20:29].plot.bar(figsize=(10,5), rot=1,
+                                 width=0.7,
+                                 color={
+                                     'O1': 'blue',
+                                     'O2': 'dodgerblue',
+                                     'O3': 'royalblue',
+                                     'HypoT': 'red',
+                                     'LinUCB': 'coral'
+                                 })
+plt.savefig('docs/polybench3.png', pad_inches=0, bbox_inches='tight')
