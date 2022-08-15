@@ -1,4 +1,4 @@
-[English](README.md) | 简体中文 | [项目开发报告](docs/report.pdf)
+[English](README.md) | 简体中文 | [🗃️项目开发报告](docs/report.pdf)
 
 # yaTuner
 
