@@ -15,7 +15,7 @@ $(VENV):
 	$(BIN)/pip install -e .
 	touch $(VENV)
 
-.PHONY: test clean init dist
+.PHONY: test clean init dist docs
 
 init: $(VENV)
 	mkdir -p tests/build
@@ -26,9 +26,15 @@ test: $(VENV) init
 dist:
 	$(BIN)/python3 setup.py sdist bdist_wheel
 
+docs:
+	lazydocs yatuner.tuner
+	lazydocs yatuner.utils
+
 clean: 
 #	rm -rf $(VENV)
 	rm -rf tests/build
 	rm -rf dist
+	rm docs/yatuner.tuner.md
+	rm docs/yatuner.utils.md
 	find . -type f -name *.pyc -delete
 	find . -type d -name __pycache__ -delete

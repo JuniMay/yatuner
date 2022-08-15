@@ -48,23 +48,15 @@ class Tuner:
         """A tuner.
 
         Args:
-            call_compile ((Sequence[str], Mapping, str) -> None): A function
-                runing compilation process.
-            call_running (() -> float): A function fetching result of target 
-                program.
+            call_compile ((Sequence[str], Mapping, str) -> None): A function runing compilation process.
+            call_running (() -> float): A function fetching result of target program.
             optimizers (Sequence[str]): List of on/of options.
-            parameters (Mapping[str, Tuple]): List of parameters, 
-                in format of `param: (min, max, default)`
-            call_perf (() -> Dict[str, Any], optional): Fectch feature of given 
-                program, used in linUCB. Defaults to None.
-            workspace (str, optional): Directory to store output files. 
-                Defaults to 'yatuner.db'.
+            parameters (Mapping[str, Tuple]): List of parameters, in format of `param: (min, max, default)`
+            call_perf (() -> Dict[str, Any], optional): Fectch feature of given program, used in linUCB. Defaults to None.
+            workspace (str, optional): Directory to store output files. Defaults to 'yatuner.db'.
             log_level (optional): Log level. Defaults to logging.DEBUG.
-            norm_range (float, optional): Cut the data of test run to get more 
-                accurate result, None if doing a symmetrization. 
-                Defaults to None.
-            deterministic (bool): False if the result of `call_compile` is 
-                random to a certain extent, otherwise True. Defaults to False.
+            norm_range (float, optional): Cut the data of test run to get more accurate result, None if doing a symmetrization. Defaults to None.
+            deterministic (bool): False if the result of `call_compile` is random to a certain extent, otherwise True. Defaults to False.
         """
 
         logging.basicConfig(format='[ %(name)s ] %(message)s',
@@ -178,12 +170,10 @@ class Tuner:
         """Hypothesis test for on/of options.
 
         Args:
-            num_samples (int, optional): Sampling times for each option. 
-                Defaults to 10.
+            num_samples (int, optional): Sampling times for each option. Defaults to 10.
             z_threshold (float, optional): Z threshold. Defaults to 0.05.
             t_threshold (float, optional): T threshold. Defaults to 0.05.
-            num_epochs (int, optional): optimization epoches after selection.
-                Defaults to 30.
+            num_epochs (int, optional): optimization epoches after selection. Defaults to 30.
         """
 
         if self.deterministic and num_samples != 1:
@@ -346,8 +336,7 @@ class Tuner:
         """Hypothesis test for parameters.
 
         Args:
-            num_samples (int, optional): Sampling times for each parameter. 
-                Defaults to 10.
+            num_samples (int, optional): Sampling times for each parameter. Defaults to 10.
             t_threshold (float, optional): T threshold. Defaults to 0.05.
         """
         if self.deterministic and num_samples != 1:
@@ -928,7 +917,7 @@ class Tuner:
         console.print(table)
 
     def plot_data(self) -> None:
-        """Plot result."""
+        """Plot result in violin graph."""
         if self.deterministic:
             self.logger.warning("skipping plotting data.")
             return

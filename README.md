@@ -27,16 +27,23 @@ These tools can be used in the tuning script, see `examples` for details.
 
 The tuning process and relative methods and their functionalities are listed as below.
 
-| Method                      | Functionality                              |
-| --------------------------- | ------------------------------------------ |
-| `tuner.initialize`          | Initialize workspace                       |
-| `tuner.test_run`            | Doing an initial test run                  |
-| `tuner.hypotest_optimizers` | Hypothesis test for optimizers             |
-| `tuner.hypotest_parameters` | Hypothesis test for parameters             |
-| `tuner.optimize`            | Tune parameters with Bayesian Optimization |
-| `tuner.optimize_linUCB`     | Tune parameters with LinUCB                |
-| `tuner.run`                 | Run final test and generate result         |
-| `tuner.plot_data`           | Plot result in violin graph                |
+| Method                              | Functionality                              |
+| ----------------------------------- | ------------------------------------------ |
+| `yatuner.Tuner.initialize`          | Initialize workspace                       |
+| `yatuner.Tuner.test_run`            | Doing an initial test run                  |
+| `yatuner.Tuner.hypotest_optimizers` | Hypothesis test for optimizers             |
+| `yatuner.Tuner.hypotest_parameters` | Hypothesis test for parameters             |
+| `yatuner.Tuner.optimize`            | Tune parameters with Bayesian Optimization |
+| `yatuner.Tuner.optimize_linUCB`     | Tune parameters with LinUCB                |
+| `yatuner.Tuner.run`                 | Run final test and generate result         |
+| `yatuner.Tuner.plot_data`           | Plot result in violin graph                |
+
+Detailed documentation of `yatuner.Tuner` and `yatuner.utils` can be found in `docs`.
+
+| Module          | Documentation                                    |
+| --------------- | ------------------------------------------------ |
+| `yatuner.Tuner` | [`docs/yatuner.tuner.md`](docs/yatuner.tuner.md) |
+| `yatuner.utils` | [`docs/yatuner.utils.md`](docs/yatuner.utils.md) |
 
 ## Usage
 

@@ -6,7 +6,7 @@
 
 ## 开始
 
-使用 `make init` 可以创建一个虚拟环境，所有例子都位于 `examples` 目录下。
+使用 `make init` 可以创建一个虚拟环境，示例位于 `examples` 目录下。
 
 在对一个项目进行优化前，使用 `yatuner -g <filename>` 生成初始调优脚本模板，对此模板进行修改以适应项目具体情况。生成的初始模板中包含了有关对象的具体信息。
 
@@ -27,16 +27,23 @@
 
 优化过程及有关方法及其功能总结如下表。
 
-| 方法                          | 功能                        |
-| --------------------------- | ------------------------- |
-| `tuner.initialize`          | 初始化工作区                    |
-| `tuner.test_run`            | 预测试运行                     |
-| `tuner.hypotest_optimizers` | 对 optimizers 假设检验         |
-| `tuner.hypotest_parameters` | 对 parameters 假设检验         |
-| `tuner.optimize`            | 使用贝叶斯优化对 parameters 调优    |
-| `tuner.optimize_linUCB`     | 使用 LinUCB 对 parameters 调优 |
-| `tuner.run`                 | 测试运行并生成结果                 |
-| `tuner.plot_data`           | 生成结果小提琴图                  |
+| 方法                                  | 功能                        |
+| ----------------------------------- | ------------------------- |
+| `yatuner.Tuner.initialize`          | 初始化工作区                    |
+| `yatuner.Tuner.test_run`            | 预测试运行                     |
+| `yatuner.Tuner.hypotest_optimizers` | 对 optimizers 假设检验         |
+| `yatuner.Tuner.hypotest_parameters` | 对 parameters 假设检验         |
+| `yatuner.Tuner.optimize`            | 使用贝叶斯优化对 parameters 调优    |
+| `yatuner.Tuner.optimize_linUCB`     | 使用 LinUCB 对 parameters 调优 |
+| `yatuner.Tuner.run`                 | 测试运行并生成结果                 |
+| `yatuner.Tuner.plot_data`           | 生成结果小提琴图                  |
+
+对 `yatuner.Tuner` 和 `yatuner.utils` 模块的具体文档可以在 `docs` 中找到。
+
+| 模块              | 文档                                               |
+| --------------- | ------------------------------------------------ |
+| `yatuner.Tuner` | [`docs/yatuner.tuner.md`](docs/yatuner.tuner.md) |
+| `yatuner.utils` | [`docs/yatuner.utils.md`](docs/yatuner.utils.md) |
 
 ## 使用
 

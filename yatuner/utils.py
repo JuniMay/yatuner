@@ -24,7 +24,7 @@ def execute(command) -> Dict[str, Any]:
     """Execute given command.
 
     Args:
-        command: command to be executed.
+        command: Command to be executed.
 
     """
     # TODO: time & memory limit
@@ -46,6 +46,9 @@ def execute(command) -> Dict[str, Any]:
 
 def fetch_perf_stat(command) -> Dict[str, Any]:
     """Use `perf stat <command>` to analyze given program and get dict of counters.
+
+    Args:
+        command: Command to be used in `perf stat`.
 
     """
     perf_command = (
@@ -111,6 +114,7 @@ def fetch_perf_stat(command) -> Dict[str, Any]:
 
 
 def ir2vec(llvm_ir, outfile, mode='fa', vocab='vocab.txt', level='p'):
+    """Call ir2vec tool and fetch the result."""
     if (os.path.exists(outfile)):
         os.remove(outfile)
     command = (f'ir2vec -{mode} -vocab {vocab}'
@@ -123,6 +127,7 @@ def ir2vec(llvm_ir, outfile, mode='fa', vocab='vocab.txt', level='p'):
 
 
 def generate_llvm(src, llvm_ir, llvm_compiler='clang') -> None:
+    """Generate llvm ir for source code."""
     command = f'{llvm_compiler} -S -emit-llvm -o {llvm_ir} {src}'
     res = execute(command)
     if (res['returncode'] != 0):
@@ -133,6 +138,7 @@ def fetch_src_feature(src: str,
                       llvm_ir=None,
                       outfile=None,
                       clean=False) -> np.array:
+    """Fetch source code feature by using ir2vec."""
     if llvm_ir is None:
         llvm_ir = src + '.ll'
     if outfile is None:
@@ -168,10 +174,10 @@ def fetch_src_feature(src: str,
 
 
 def fetch_arch() -> str:
-    """Fetch machine architecture information
+    """Fetch machine architecture information.
 
     Returns:
-        str: The architecture
+        str: The architecture.
     """
     return platform.machine()
 
@@ -183,7 +189,7 @@ def fetch_gcc_optimizers(cc='gcc') -> List[str]:
         cc (str, optional): Specified gcc binary. Defaults to 'gcc'.
 
     Returns:
-        List[str]: Optimizers
+        List[str]: Optimizers.
     """
     optimizers = []
 
@@ -219,15 +225,13 @@ def fetch_gcc_parameters(cc='gcc',
 
     Args:
         cc (str, optional): Specified gcc binary. Defaults to 'gcc'.
-        params_def (str, optional): `params.def` of gcc source for version 
-            earlier then 10. Defaults to None.
+        params_def (str, optional): `params.def` of gcc source for version earlier then 10. Defaults to None.
 
     Raises:
         RuntimeError: If `params.def` is not given for gcc earlier than 10.
 
     Returns:
-        Dict[str, Tuple[int, int, int]]: Parameters in format of 
-            `param: (min, max, default)`
+        Dict[str, Tuple[int, int, int]]: Parameters in format of `param: (min, max, default)`.
     """
 
     version = fetch_gcc_version(cc)
@@ -308,7 +312,7 @@ def fetch_size(filename: str) -> int:
     """Fetch file size
 
     Args:
-        filename (str): Path to file
+        filename (str): Path to file.
 
     Returns:
         int: File size in bytes.
